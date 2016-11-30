@@ -2,13 +2,17 @@ clear;
 clc;
 
 %% system
-T = 2*pi; % sampling time
+T = 2*pi/2; % sampling time
 m = 1; % mass
-nx = 8; % 4d position (angle around z-axis), velocity and acceleration
+nx = 20; % 4d position (angle around z-axis) and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
 g = -9.8; % gravitational acceleration
 
 % continuous state space matrices
+% dot.X = Ac*X + Bc*U
+% dot.X = [vx; vy; vz; wyaw; ax; ay; az; ayaw]
+% X = [x; y; z; yaw; vx; vy; vz; wyaw]
+% U = [Fx; Fy; Fz; Tyaw]
 Ac = zeros(nx,nx);
 Ac(1,5) = 1;
 Ac(2,6) = 1;
@@ -34,14 +38,43 @@ Ad = A_tilde_d(1:nx,1:nx);
 Bd = A_tilde_d(1:nx,nx+1:nx+nu);
 gd = A_tilde_d(1:nx,nx+nu+1:2*nx+nu) * gc;
 
+% finite differentiation
+% a(i+1) = v(i+1) - v(i)
+Ad(9,9) = 0;
+Ad(10,10) = 0;
+Ad(11,11) = 0;
+Ad(12,12) = 0;
+Ad(9,5) = -1/T;
+Ad(10,6) = -1/T;
+Ad(11,7) = -1/T;
+Ad(12,8) = -1/T;
+
+% j(i+1) = a(i+1) - a(i)
+Ad(13,13) = 0;
+Ad(14,14) = 0;
+Ad(15,15) = 0;
+Ad(16,16) = 0;
+Ad(13,9) = -1/T;
+Ad(14,10) = -1/T;
+Ad(15,11) = -1/T;
+Ad(16,12) = -1/T;
+
+%s(i+1) = j(i+1) - j(i)
+Ad(17,17) = 0;
+Ad(18,18) = 0;
+Ad(19,19) = 0;
+Ad(20,20) = 0;
+Ad(17,13) = -1/T;
+Ad(18,14) = -1/T;
+Ad(19,15) = -1/T;
+Ad(20,16) = -1/T;
+
 %% MPC setup
 N = 10;
 Q = eye(nx);
-% Q(5:end,:) = zeros(4,8);
 R = eye(nu);
 % [~,P] = dlqr(Ad,Bd,Q,R);
 P = eye(nx);
-% P(5:end,:) = zeros(4,8);
 umin = [-4, -4, -10, -4];      umax = [4, 4, 10, 4]; % u limits based on drones max force
 xmin = -inf*ones(1,nx);    xmax = inf*ones(1,nx); % no boundaries in space
 
@@ -49,7 +82,7 @@ xmin = -inf*ones(1,nx);    xmax = inf*ones(1,nx); % no boundaries in space
 kmax = 20;
 t = 0:2*pi/(kmax/2):4*pi;
 x = sin(t); y = cos(t); z = 0.2*t; yaw = zeros(1,kmax+1);
-Xref = [x; y; z; yaw; zeros(1,kmax+1); zeros(1,kmax+1); zeros(1,kmax+1); zeros(1,kmax+1)];
+Xref = [x; y; z; yaw; repmat(zeros(1,kmax+1), nx-4, 1)];
     
 %% FORCES multistage form
 % assume variable ordering zi = [ui; xi] for i=1...N
@@ -70,8 +103,9 @@ model.objective{model.N} = @(z,ref) z(nu+1:nu+nx)'*P*z(nu+1:nu+nx) - 2*ref'*z(nu
 
 % equalities
 model.eq = @(z) Ad*z(nu+1:nu+nx) + Bd*z(1:nu) + gd;
-              
-model.E = [zeros(nx,nu), eye(nx)];
+
+% model.E = [zeros(nx,nu), eye(nx)];
+model.E = [zeros(nx,nu), eye(nx) + diag([zeros(4,1); (-1/T)*ones(12,1)], -4)];
 
 % initial state
 model.xinitidx = nu+1:nu+nx;

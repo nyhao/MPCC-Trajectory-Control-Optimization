@@ -91,14 +91,14 @@ typedef double FORCESNLPsolverINTERFACE_FLOAT;
 /* fill this with data before calling the solver! */
 typedef struct FORCESNLPsolver_params
 {
-    /* vector of size 252 */
-    FORCESNLPsolver_FLOAT x0[252];
+    /* vector of size 504 */
+    FORCESNLPsolver_FLOAT x0[504];
 
-    /* vector of size 8 */
-    FORCESNLPsolver_FLOAT xinit[8];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT xinit[20];
 
-    /* vector of size 168 */
-    FORCESNLPsolver_FLOAT all_parameters[168];
+    /* vector of size 420 */
+    FORCESNLPsolver_FLOAT all_parameters[420];
 
 } FORCESNLPsolver_params;
 
@@ -107,68 +107,68 @@ typedef struct FORCESNLPsolver_params
 /* the desired variables are put here by the solver */
 typedef struct FORCESNLPsolver_output
 {
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x01[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x01[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x02[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x02[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x03[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x03[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x04[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x04[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x05[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x05[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x06[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x06[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x07[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x07[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x08[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x08[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x09[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x09[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x10[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x10[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x11[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x11[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x12[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x12[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x13[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x13[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x14[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x14[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x15[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x15[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x16[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x16[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x17[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x17[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x18[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x18[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x19[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x19[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x20[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x20[24];
 
-    /* vector of size 12 */
-    FORCESNLPsolver_FLOAT x21[12];
+    /* vector of size 24 */
+    FORCESNLPsolver_FLOAT x21[24];
 
 } FORCESNLPsolver_output;
 
