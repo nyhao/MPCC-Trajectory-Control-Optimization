@@ -2,7 +2,7 @@ clear;
 clc;
 
 %% system
-T = 2*pi/2; % sampling time
+T = 2*pi; % sampling time
 m = 1; % mass
 nx = 20; % 4d position (angle around z-axis) and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
