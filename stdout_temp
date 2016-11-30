@@ -19,5 +19,5 @@ Problem size: 244 variables, 160 equality and 168 constraints in 21 stage(s)
    10  -6.6075e+01  3.38e-06  3.77e-14  0.00e+00  2.0e-07 (A)  1.0000  1.0000   1  1.0e-09  1.0e-09    1
 
 OPTIMAL (within EQTOL=1.0e-06, STATTOL=1.0e-05, COMPTOL=1.0e-06).
-Solve time: 1.647 ms (10 iterations)
+Solve time: 1.605 ms (10 iterations)
 

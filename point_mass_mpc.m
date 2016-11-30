@@ -24,6 +24,8 @@ Bc(8,4) = 1/m;
 gc = zeros(nx,1);
 gc(7,1) = g;
 
+I = eye(nx);
+
 % discretization
 A_tilde = [Ac, Bc, I; zeros(nx + nu, nx + nu + nx)]; 
 A_tilde_d = expm(A_tilde*T);
