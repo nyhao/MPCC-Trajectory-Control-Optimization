@@ -71,6 +71,7 @@ Ad(20,16) = -1/T;
 
 %% MPC setup
 N = 40;
+% for constant Q, R, and P matrices
 Q = eye(nx);
 Q(1:4,1:4) = 1000000*eye(4);
 R = eye(nu);
@@ -79,13 +80,19 @@ P = eye(nx);
 P(1:4,1:4) = 1000000*eye(4);
 O = eye(nx);
 O(1:4,1:4) = zeros(4);
+% for real-time varying Q, R, and P matrices
+Qvec = ones(nx,1);
+Qvec(1:4) = 1000000*ones(4,1);
+Ovec = ones(nx,1);
+Ovec(1:4) = zeros(4,1);
+Qmat = [repmat(Ovec, 1, 10), Qvec, repmat(Ovec, 1, 9), Qvec, repmat(Ovec, 1, 9), Qvec, repmat(Ovec, 1, 9), Qvec];
+% boundaries
 umin = [-4, -4, -10, -4];      umax = [4, 4, 10, 4]; % u limits based on drones max force
 xmin = -inf*ones(1,nx);    xmax = inf*ones(1,nx); % no boundaries in space
 
 %% reference trajectory
 kmax = 40;
 t = 0:T:T*kmax;
-% x = sin(t); y = cos(t); z = 0.2*t; yaw = zeros(1,kmax+1);
 x = zeros(1,kmax+1);
 y = zeros(1,kmax+1);
 z = zeros(1,kmax+1);
@@ -101,98 +108,17 @@ Xref = [x; y; z; yaw; repmat(zeros(1,kmax+1), nx-4, 1)];
 model.N     = 41;    % horizon length
 model.nvar  = nx+nu;    % number of variables
 model.neq   = nx;    % number of equality constraints
-model.npar  = nx;    % number of real-time parameters
+model.npar  = 2*nx;    % number of real-time parameters
 
 % objective 
 for i = 1:model.N-1
 %     model.objective{i} = @(z,ref) (z(nu+1:nu+nx)-ref)'*Q*(z(nu+1:nu+nx)-ref);
 %     model.objective{i} = @(z,ref) z(nu+1:nu+nx)'*Q*z(nu+1:nu+nx) - 2*ref'*z(nu+1:nu+nx);
+    model.objective{i} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
 end
-% model.objective{1} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,1)'*z(nu+1:nu+nx);
-% model.objective{2} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,2)'*z(nu+1:nu+nx);
-% model.objective{3} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,3)'*z(nu+1:nu+nx);
-% model.objective{4} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,4)'*z(nu+1:nu+nx);
-% model.objective{5} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,5)'*z(nu+1:nu+nx);
-% model.objective{6} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,6)'*z(nu+1:nu+nx);
-% model.objective{7} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,7)'*z(nu+1:nu+nx);
-% model.objective{8} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,8)'*z(nu+1:nu+nx);
-% model.objective{9} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,9)'*z(nu+1:nu+nx);
-% model.objective{10} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,10)'*z(nu+1:nu+nx);
-% model.objective{11} = @(z) z(nu+1:nu+nx)'*Q*z(nu+1:nu+nx) - 2*Xref(:,11)'*z(nu+1:nu+nx);
-% model.objective{12} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,12)'*z(nu+1:nu+nx);
-% model.objective{13} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,13)'*z(nu+1:nu+nx);
-% model.objective{14} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,14)'*z(nu+1:nu+nx);
-% model.objective{15} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,15)'*z(nu+1:nu+nx);
-% model.objective{16} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,16)'*z(nu+1:nu+nx);
-% model.objective{17} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,17)'*z(nu+1:nu+nx);
-% model.objective{18} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,18)'*z(nu+1:nu+nx);
-% model.objective{19} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,19)'*z(nu+1:nu+nx);
-% model.objective{20} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,20)'*z(nu+1:nu+nx);
-% model.objective{21} = @(z) z(nu+1:nu+nx)'*Q*z(nu+1:nu+nx) - 2*Xref(:,21)'*z(nu+1:nu+nx);
-% model.objective{22} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,22)'*z(nu+1:nu+nx);
-% model.objective{23} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,23)'*z(nu+1:nu+nx);
-% model.objective{24} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,24)'*z(nu+1:nu+nx);
-% model.objective{25} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,25)'*z(nu+1:nu+nx);
-% model.objective{26} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,26)'*z(nu+1:nu+nx);
-% model.objective{27} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,27)'*z(nu+1:nu+nx);
-% model.objective{28} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,28)'*z(nu+1:nu+nx);
-% model.objective{29} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,29)'*z(nu+1:nu+nx);
-% model.objective{30} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,30)'*z(nu+1:nu+nx);
-% model.objective{31} = @(z) z(nu+1:nu+nx)'*Q*z(nu+1:nu+nx) - 2*Xref(:,31)'*z(nu+1:nu+nx);
-% model.objective{32} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,32)'*z(nu+1:nu+nx);
-% model.objective{33} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,33)'*z(nu+1:nu+nx);
-% model.objective{34} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,34)'*z(nu+1:nu+nx);
-% model.objective{35} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,35)'*z(nu+1:nu+nx);
-% model.objective{36} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,36)'*z(nu+1:nu+nx);
-% model.objective{37} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,37)'*z(nu+1:nu+nx);
-% model.objective{38} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,38)'*z(nu+1:nu+nx);
-% model.objective{39} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,39)'*z(nu+1:nu+nx);
-% model.objective{40} = @(z) z(nu+1:nu+nx)'*O*z(nu+1:nu+nx) - 2*Xref(:,40)'*z(nu+1:nu+nx);
-
-model.objective{1} = @(z) (z(nu+1:nu+nx)-Xref(:,1))'*O*(z(nu+1:nu+nx)-Xref(:,1));
-model.objective{2} = @(z) (z(nu+1:nu+nx)-Xref(:,2))'*O*(z(nu+1:nu+nx)-Xref(:,2));
-model.objective{3} = @(z) (z(nu+1:nu+nx)-Xref(:,3))'*O*(z(nu+1:nu+nx)-Xref(:,3));
-model.objective{4} = @(z) (z(nu+1:nu+nx)-Xref(:,4))'*O*(z(nu+1:nu+nx)-Xref(:,4));
-model.objective{5} = @(z) (z(nu+1:nu+nx)-Xref(:,5))'*O*(z(nu+1:nu+nx)-Xref(:,5));
-model.objective{6} = @(z) (z(nu+1:nu+nx)-Xref(:,6))'*O*(z(nu+1:nu+nx)-Xref(:,6));
-model.objective{7} = @(z) (z(nu+1:nu+nx)-Xref(:,7))'*O*(z(nu+1:nu+nx)-Xref(:,7));
-model.objective{8} = @(z) (z(nu+1:nu+nx)-Xref(:,8))'*O*(z(nu+1:nu+nx)-Xref(:,8));
-model.objective{9} = @(z) (z(nu+1:nu+nx)-Xref(:,9))'*O*(z(nu+1:nu+nx)-Xref(:,9));
-model.objective{10} = @(z) (z(nu+1:nu+nx)-Xref(:,10))'*O*(z(nu+1:nu+nx)-Xref(:,10));
-model.objective{11} = @(z) (z(nu+1:nu+nx)-Xref(:,11))'*Q*(z(nu+1:nu+nx)-Xref(:,11));
-model.objective{12} = @(z) (z(nu+1:nu+nx)-Xref(:,12))'*O*(z(nu+1:nu+nx)-Xref(:,12));
-model.objective{13} = @(z) (z(nu+1:nu+nx)-Xref(:,13))'*O*(z(nu+1:nu+nx)-Xref(:,13));
-model.objective{14} = @(z) (z(nu+1:nu+nx)-Xref(:,14))'*O*(z(nu+1:nu+nx)-Xref(:,14));
-model.objective{15} = @(z) (z(nu+1:nu+nx)-Xref(:,15))'*O*(z(nu+1:nu+nx)-Xref(:,15));
-model.objective{16} = @(z) (z(nu+1:nu+nx)-Xref(:,16))'*O*(z(nu+1:nu+nx)-Xref(:,16));
-model.objective{17} = @(z) (z(nu+1:nu+nx)-Xref(:,17))'*O*(z(nu+1:nu+nx)-Xref(:,17));
-model.objective{18} = @(z) (z(nu+1:nu+nx)-Xref(:,18))'*O*(z(nu+1:nu+nx)-Xref(:,18));
-model.objective{19} = @(z) (z(nu+1:nu+nx)-Xref(:,19))'*O*(z(nu+1:nu+nx)-Xref(:,19));
-model.objective{20} = @(z) (z(nu+1:nu+nx)-Xref(:,20))'*O*(z(nu+1:nu+nx)-Xref(:,20));
-model.objective{21} = @(z) (z(nu+1:nu+nx)-Xref(:,21))'*Q*(z(nu+1:nu+nx)-Xref(:,21));
-model.objective{22} = @(z) (z(nu+1:nu+nx)-Xref(:,22))'*O*(z(nu+1:nu+nx)-Xref(:,22));
-model.objective{23} = @(z) (z(nu+1:nu+nx)-Xref(:,23))'*O*(z(nu+1:nu+nx)-Xref(:,23));
-model.objective{24} = @(z) (z(nu+1:nu+nx)-Xref(:,24))'*O*(z(nu+1:nu+nx)-Xref(:,24));
-model.objective{25} = @(z) (z(nu+1:nu+nx)-Xref(:,25))'*O*(z(nu+1:nu+nx)-Xref(:,25));
-model.objective{26} = @(z) (z(nu+1:nu+nx)-Xref(:,26))'*O*(z(nu+1:nu+nx)-Xref(:,26));
-model.objective{27} = @(z) (z(nu+1:nu+nx)-Xref(:,27))'*O*(z(nu+1:nu+nx)-Xref(:,27));
-model.objective{28} = @(z) (z(nu+1:nu+nx)-Xref(:,28))'*O*(z(nu+1:nu+nx)-Xref(:,28));
-model.objective{29} = @(z) (z(nu+1:nu+nx)-Xref(:,29))'*O*(z(nu+1:nu+nx)-Xref(:,29));
-model.objective{30} = @(z) (z(nu+1:nu+nx)-Xref(:,30))'*O*(z(nu+1:nu+nx)-Xref(:,30));
-model.objective{31} = @(z) (z(nu+1:nu+nx)-Xref(:,31))'*Q*(z(nu+1:nu+nx)-Xref(:,31));
-model.objective{32} = @(z) (z(nu+1:nu+nx)-Xref(:,32))'*O*(z(nu+1:nu+nx)-Xref(:,32));
-model.objective{33} = @(z) (z(nu+1:nu+nx)-Xref(:,33))'*O*(z(nu+1:nu+nx)-Xref(:,33));
-model.objective{34} = @(z) (z(nu+1:nu+nx)-Xref(:,34))'*O*(z(nu+1:nu+nx)-Xref(:,34));
-model.objective{35} = @(z) (z(nu+1:nu+nx)-Xref(:,35))'*O*(z(nu+1:nu+nx)-Xref(:,35));
-model.objective{36} = @(z) (z(nu+1:nu+nx)-Xref(:,36))'*O*(z(nu+1:nu+nx)-Xref(:,36));
-model.objective{37} = @(z) (z(nu+1:nu+nx)-Xref(:,37))'*O*(z(nu+1:nu+nx)-Xref(:,37));
-model.objective{38} = @(z) (z(nu+1:nu+nx)-Xref(:,38))'*O*(z(nu+1:nu+nx)-Xref(:,38));
-model.objective{39} = @(z) (z(nu+1:nu+nx)-Xref(:,39))'*O*(z(nu+1:nu+nx)-Xref(:,39));
-model.objective{40} = @(z) (z(nu+1:nu+nx)-Xref(:,40))'*O*(z(nu+1:nu+nx)-Xref(:,40));
-
 % model.objective{model.N} = @(z,ref) (z(nu+1:nu+nx)-ref)'*P*(z(nu+1:nu+nx)-ref);
-% model.objective{model.N} = @(z,ref) z(nu+1:nu+nx)'*P*z(nu+1:nu+nx) - 2*Xref(:,41)'*z(nu+1:nu+nx);
-model.objective{model.N} = @(z,ref) (z(nu+1:nu+nx)-Xref(:,41))'*P*(z(nu+1:nu+nx)-Xref(:,41));
+% model.objective{model.N} = @(z,ref) z(nu+1:nu+nx)'*P*z(nu+1:nu+nx) - 2*ref'*z(nu+1:nu+nx);
+model.objective{model.N} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
 
 % equalities
 model.eq = @(z) Ad*z(nu+1:nu+nx) + Bd*z(1:nu) + gd;
@@ -221,7 +147,9 @@ X = zeros(nx,kmax+1);
 % X(2,1) = 1; % because y axis is cos function (starts with 1)
 U = zeros(nu,kmax);
 problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
-problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters (reference) into one N stages array
+% problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters into one N stages array
+params = [Xref; Qmat];
+problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
 
 for k = 1:1
     

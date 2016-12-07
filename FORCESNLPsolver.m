@@ -4,7 +4,7 @@
 %   subject to the parameters supplied in the following struct:
 %       PARAMS.x0 - column vector of length 984
 %       PARAMS.xinit - column vector of length 20
-%       PARAMS.all_parameters - column vector of length 820
+%       PARAMS.all_parameters - column vector of length 1640
 %
 %   OUTPUT returns the values of the last iteration of the solver where
 %       OUTPUT.x01 - column vector of size 24
