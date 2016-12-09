@@ -2,7 +2,7 @@ clear;
 clc;
 
 %% system
-T = 0.1; % sampling time
+T = 0.05; % sampling time for 20Hz
 m = 1; % mass
 nx = 20; % 4d position (angle around z-axis) and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
@@ -70,55 +70,56 @@ Ad(19,15) = -1/T;
 Ad(20,16) = -1/T;
 
 %% MPC setup
-N = 40;
-% for constant Q, R, and P matrices
-Q = eye(nx);
+% for constant Q and P matrices
+Q = 0.001*eye(nx);
 Q(1:4,1:4) = 1000000*eye(4);
-R = eye(nu);
-% [~,P] = dlqr(Ad,Bd,Q,R);
-P = eye(nx);
+P = 0.001*eye(nx);
 P(1:4,1:4) = 1000000*eye(4);
 O = eye(nx);
 O(1:4,1:4) = zeros(4);
-% for real-time varying Q, R, and P matrices
+% for real-time varying Q and P matrices
 Qvec = ones(nx,1);
 Qvec(1:4) = 1000000*ones(4,1);
 Ovec = ones(nx,1);
 Ovec(1:4) = zeros(4,1);
 Qmat = [repmat(Ovec, 1, 10), Qvec, repmat(Ovec, 1, 9), Qvec, repmat(Ovec, 1, 9), Qvec, repmat(Ovec, 1, 9), Qvec];
 % boundaries
-umin = [-4, -4, -10, -4];      umax = [4, 4, 10, 4]; % u limits based on drones max force
+umin = [-4, -4, -10, -4];    umax = [4, 4, 10, 4]; % u limits based on drones max force
 xmin = -inf*ones(1,nx);    xmax = inf*ones(1,nx); % no boundaries in space
 
 %% reference trajectory
-kmax = 40;
+kmax = 160; % 8s trajectory for 20Hz
 t = 0:T:T*kmax;
-x = zeros(1,kmax+1);
-y = zeros(1,kmax+1);
-z = zeros(1,kmax+1);
-yaw = zeros(1,kmax+1);
-x(1,11) = 1; x(1,21) = 1; x(1,31) = 0; x(1,41) = 0;
-y(1,11) = 0; y(1,21) = 1; y(1,31) = 1; x(1,41) = 0;
+nsp = 4; % number of important sample points
+t_sample = 0:T*(kmax/nsp):T*kmax; % time for important sample points
+sx = [0, 1, 1, 0, 0]; % important sample x-coordinate
+sy = [0, 0, 1, 1, 0]; % important sample y-coordinate
+sz = [0, 0.2, 0.4, 0.6, 0.8]; % important sample z-coordinate
+syaw = [0, 0, 0, 0, 0]; % important sample yaw angle
+x = interp1(t_sample, sx, t, 'linear');
+y = interp1(t_sample, sy, t, 'linear');
+z = interp1(t_sample, sz, t, 'linear');
+yaw = interp1(t_sample, syaw, t);
 Xref = [x; y; z; yaw; repmat(zeros(1,kmax+1), nx-4, 1)];
     
 %% FORCES multistage form
 % assume variable ordering zi = [ui; xi] for i=1...N
 
 % dimensions
-model.N     = 41;    % horizon length
+model.N     = 11;    % horizon length
 model.nvar  = nx+nu;    % number of variables
 model.neq   = nx;    % number of equality constraints
-model.npar  = 2*nx;    % number of real-time parameters
+model.npar  = nx;    % number of real-time parameters
 
 % objective 
 for i = 1:model.N-1
-%     model.objective{i} = @(z,ref) (z(nu+1:nu+nx)-ref)'*Q*(z(nu+1:nu+nx)-ref);
+    model.objective{i} = @(z,ref) (z(nu+1:nu+nx)-ref)'*Q*(z(nu+1:nu+nx)-ref);
 %     model.objective{i} = @(z,ref) z(nu+1:nu+nx)'*Q*z(nu+1:nu+nx) - 2*ref'*z(nu+1:nu+nx);
-    model.objective{i} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
+%     model.objective{i} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
 end
-% model.objective{model.N} = @(z,ref) (z(nu+1:nu+nx)-ref)'*P*(z(nu+1:nu+nx)-ref);
+model.objective{model.N} = @(z,ref) (z(nu+1:nu+nx)-ref)'*P*(z(nu+1:nu+nx)-ref);
 % model.objective{model.N} = @(z,ref) z(nu+1:nu+nx)'*P*z(nu+1:nu+nx) - 2*ref'*z(nu+1:nu+nx);
-model.objective{model.N} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
+% model.objective{model.N} = @(z,par) (z(nu+1:nu+nx)-par(1:nx))'*diag(par(nx+1:2*nx))*(z(nu+1:nu+nx)-par(1:nx));
 
 % equalities
 model.eq = @(z) Ad*z(nu+1:nu+nx) + Bd*z(1:nu) + gd;
@@ -144,16 +145,52 @@ FORCES_NLP(model, codeoptions);
 
 %% simulate
 X = zeros(nx,kmax+1);
-% X(2,1) = 1; % because y axis is cos function (starts with 1)
 U = zeros(nu,kmax);
 problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 % problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters into one N stages array
-params = [Xref; Qmat];
-problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
+% params = [Xref; Qmat];
+% problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
 
-for k = 1:1
+% for k = 1:kmax
+%     
+%     problem.xinit = X(:,k);
+%     
+%     if (k+model.N <= kmax+2)
+%         problem.all_parameters = reshape(Xref(:,k:k-1+model.N), [model.N*nx,1]);
+%     else
+%         problem.all_parameters = [reshape(Xref(:,k:kmax+1), [(kmax+2-k)*nx,1]); ...
+%             repmat(Xref(:,kmax+1), k+model.N-(kmax+2), 1)];
+%     end
+%         
+%     [solverout,exitflag,info] = FORCESNLPsolver(problem);
+% 
+%     if( exitflag == 1 )
+%         U(:,k) = solverout.x01(1:nu);
+%         solvetime(k) = info.solvetime;
+%         iters(k) = info.it;
+%     else
+%         error('Some problem in solver');
+%     end
+%     
+%     X(:,k+1) = model.eq( [U(:,k); X(:,k)] )';
+% end
+
+X = zeros(nx,1);
+X(1:3,1) = [0.25; -0.18; 0.037]; 
+U = zeros(nu,1);
+k = 1;
+[~, nrid] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+searchrange = 20;
+while (nrid ~= kmax+1)
     
     problem.xinit = X(:,k);
+    
+    if (nrid+model.N <= kmax+2)
+        problem.all_parameters = reshape(Xref(:,nrid:nrid-1+model.N), [model.N*nx,1]);
+    else
+        problem.all_parameters = [reshape(Xref(:,nrid:kmax+1), [(kmax+2-nrid)*nx,1]); ...
+            repmat(Xref(:,kmax+1), nrid+model.N-(kmax+2), 1)];
+    end
     
     [solverout,exitflag,info] = FORCESNLPsolver(problem);
 
@@ -166,6 +203,15 @@ for k = 1:1
     end
     
     X(:,k+1) = model.eq( [U(:,k); X(:,k)] )';
+    [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,:)'));
+%     if nrid <= searchrange 
+%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,1:2*searchrange)'));
+%     elseif nrid >= kmax-40
+%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,kmax+1-2*searchrange:kmax+1)'));
+%     else
+%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid-searchrange:nrid+searchrange)'));
+%     end
+    k = k + 1;
 end
 
 %% results
@@ -185,21 +231,25 @@ error = abs(Xout - Xref);
 %% plot
 figure; clf;
 % quiver3(Xref(1,:),Xref(2,:),Xref(3,:),Xref(5,:),Xref(6,:),Xref(7,:));
-plot3(Xref(1,:),Xref(2,:),Xref(3,:));
-axis([-1.5 1.5 -1.5 1.5 -0.1 0.1]);
+plot3(Xref(1,:),Xref(2,:),Xref(3,:),'o');
+axis([-0.5 1.5 -0.5 1.2 -0.1 1]);
 hold on;
-quiver3(Xout(1,:),Xout(2,:),Xout(3,:),Xout(5,:),Xout(6,:),Xout(7,:));
+% quiver3(Xout(1,:),Xout(2,:),Xout(3,:),Xout(5,:),Xout(6,:),Xout(7,:));
 % plot3(Xout(1,:),Xout(2,:),Xout(3,:));
+quiver3(X(1,:),X(2,:),X(3,:),X(5,:),X(6,:),X(7,:));
+% plot3(X(1,:),X(2,:),X(3,:),'+');
 hold off;
 
-figure;
-plot(t,Xref(1,:),'--r',t,Xref(2,:),'--g',t,Xref(3,:),'--b');
-hold on;
-plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:)),'b';
-hold off;
-
-figure;
-plot(t,Xref(5,:),'--m',t,Xref(6,:),'--c',t,Xref(7,:),'--k');
-hold on;
-plot(t,Xout(5,:),'m',t,Xout(6,:),'c',t,Xout(7,:),'k');
-hold off;
+% figure;
+% plot(t,Xref(1,:),'--r',t,Xref(2,:),'--g',t,Xref(3,:),'--b');
+% hold on;
+% % plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:)),'b';
+% plot(t,X(1,:),'r',t,X(2,:),'g',t,X(3,:)),'b';
+% hold off;
+% 
+% figure;
+% plot(t,Xref(5,:),'--m',t,Xref(6,:),'--c',t,Xref(7,:),'--k');
+% hold on;
+% % plot(t,Xout(5,:),'m',t,Xout(6,:),'c',t,Xout(7,:),'k');
+% plot(t,X(5,:),'m',t,X(6,:),'c',t,X(7,:),'k');
+% hold off;

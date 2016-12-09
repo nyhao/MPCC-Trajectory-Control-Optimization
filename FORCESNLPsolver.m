@@ -2,9 +2,9 @@
 %
 %   OUTPUT = FORCESNLPsolver(PARAMS) solves a multistage problem
 %   subject to the parameters supplied in the following struct:
-%       PARAMS.x0 - column vector of length 984
+%       PARAMS.x0 - column vector of length 264
 %       PARAMS.xinit - column vector of length 20
-%       PARAMS.all_parameters - column vector of length 1640
+%       PARAMS.all_parameters - column vector of length 220
 %
 %   OUTPUT returns the values of the last iteration of the solver where
 %       OUTPUT.x01 - column vector of size 24
@@ -18,36 +18,6 @@
 %       OUTPUT.x09 - column vector of size 24
 %       OUTPUT.x10 - column vector of size 24
 %       OUTPUT.x11 - column vector of size 24
-%       OUTPUT.x12 - column vector of size 24
-%       OUTPUT.x13 - column vector of size 24
-%       OUTPUT.x14 - column vector of size 24
-%       OUTPUT.x15 - column vector of size 24
-%       OUTPUT.x16 - column vector of size 24
-%       OUTPUT.x17 - column vector of size 24
-%       OUTPUT.x18 - column vector of size 24
-%       OUTPUT.x19 - column vector of size 24
-%       OUTPUT.x20 - column vector of size 24
-%       OUTPUT.x21 - column vector of size 24
-%       OUTPUT.x22 - column vector of size 24
-%       OUTPUT.x23 - column vector of size 24
-%       OUTPUT.x24 - column vector of size 24
-%       OUTPUT.x25 - column vector of size 24
-%       OUTPUT.x26 - column vector of size 24
-%       OUTPUT.x27 - column vector of size 24
-%       OUTPUT.x28 - column vector of size 24
-%       OUTPUT.x29 - column vector of size 24
-%       OUTPUT.x30 - column vector of size 24
-%       OUTPUT.x31 - column vector of size 24
-%       OUTPUT.x32 - column vector of size 24
-%       OUTPUT.x33 - column vector of size 24
-%       OUTPUT.x34 - column vector of size 24
-%       OUTPUT.x35 - column vector of size 24
-%       OUTPUT.x36 - column vector of size 24
-%       OUTPUT.x37 - column vector of size 24
-%       OUTPUT.x38 - column vector of size 24
-%       OUTPUT.x39 - column vector of size 24
-%       OUTPUT.x40 - column vector of size 24
-%       OUTPUT.x41 - column vector of size 24
 %
 %   [OUTPUT, EXITFLAG] = FORCESNLPsolver(PARAMS) returns additionally
 %   the integer EXITFLAG indicating the state of the solution with 

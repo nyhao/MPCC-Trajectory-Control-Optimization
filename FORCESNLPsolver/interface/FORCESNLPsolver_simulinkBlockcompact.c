@@ -74,7 +74,7 @@ static void mdlInitializeSizes(SimStruct *S)
     if (!ssSetNumInputPorts(S, 3)) return;
     	
 	/* Input Port 0 */
-    ssSetInputPortMatrixDimensions(S,  0, 984, 1);
+    ssSetInputPortMatrixDimensions(S,  0, 264, 1);
     ssSetInputPortDataType(S, 0, SS_DOUBLE);
     ssSetInputPortComplexSignal(S, 0, COMPLEX_NO); /* no complex signals suppported */
     ssSetInputPortDirectFeedThrough(S, 0, 1); /* Feedthrough enabled */
@@ -86,7 +86,7 @@ static void mdlInitializeSizes(SimStruct *S)
     ssSetInputPortDirectFeedThrough(S, 1, 1); /* Feedthrough enabled */
     ssSetInputPortRequiredContiguous(S, 1, 1); /*direct input signal access*/	
 	/* Input Port 2 */
-    ssSetInputPortMatrixDimensions(S,  2, 1640, 1);
+    ssSetInputPortMatrixDimensions(S,  2, 220, 1);
     ssSetInputPortDataType(S, 2, SS_DOUBLE);
     ssSetInputPortComplexSignal(S, 2, COMPLEX_NO); /* no complex signals suppported */
     ssSetInputPortDirectFeedThrough(S, 2, 1); /* Feedthrough enabled */
@@ -97,7 +97,7 @@ static void mdlInitializeSizes(SimStruct *S)
     if (!ssSetNumOutputPorts(S, 1)) return;    
 		
 	/* Output Port 0 */
-    ssSetOutputPortMatrixDimensions(S,  0, 984, 1);
+    ssSetOutputPortMatrixDimensions(S,  0, 264, 1);
     ssSetOutputPortDataType(S, 0, SS_DOUBLE);
     ssSetOutputPortComplexSignal(S, 0, COMPLEX_NO); /* no complex signals suppported */
 
@@ -209,9 +209,9 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 	
 
 	/* Copy inputs */
-	for( i=0; i<984; i++){ params.x0[i] = (double) x0[i]; }
+	for( i=0; i<264; i++){ params.x0[i] = (double) x0[i]; }
 	for( i=0; i<20; i++){ params.xinit[i] = (double) xinit[i]; }
-	for( i=0; i<1640; i++){ params.all_parameters[i] = (double) all_parameters[i]; }
+	for( i=0; i<220; i++){ params.all_parameters[i] = (double) all_parameters[i]; }
 	
 
 	
@@ -251,36 +251,6 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 	k=192; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x09[i]; }
 	k=216; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x10[i]; }
 	k=240; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x11[i]; }
-	k=264; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x12[i]; }
-	k=288; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x13[i]; }
-	k=312; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x14[i]; }
-	k=336; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x15[i]; }
-	k=360; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x16[i]; }
-	k=384; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x17[i]; }
-	k=408; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x18[i]; }
-	k=432; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x19[i]; }
-	k=456; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x20[i]; }
-	k=480; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x21[i]; }
-	k=504; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x22[i]; }
-	k=528; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x23[i]; }
-	k=552; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x24[i]; }
-	k=576; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x25[i]; }
-	k=600; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x26[i]; }
-	k=624; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x27[i]; }
-	k=648; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x28[i]; }
-	k=672; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x29[i]; }
-	k=696; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x30[i]; }
-	k=720; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x31[i]; }
-	k=744; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x32[i]; }
-	k=768; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x33[i]; }
-	k=792; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x34[i]; }
-	k=816; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x35[i]; }
-	k=840; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x36[i]; }
-	k=864; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x37[i]; }
-	k=888; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x38[i]; }
-	k=912; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x39[i]; }
-	k=936; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x40[i]; }
-	k=960; for( i=0; i<24; i++){ outputs[k++] = (real_T) output.x41[i]; }
 	
 }
 
