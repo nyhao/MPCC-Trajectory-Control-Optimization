@@ -71,10 +71,10 @@ Ad(20,16) = -1/T;
 
 %% MPC setup
 % for constant Q and P matrices
-Q = 0.001*eye(nx);
-Q(1:4,1:4) = 1000000*eye(4);
-P = 0.001*eye(nx);
-P(1:4,1:4) = 1000000*eye(4);
+Q = 0.0001*eye(nx);
+Q(1:4,1:4) = 100000*eye(4);
+P = 0.0001*eye(nx);
+P(1:4,1:4) = 100000*eye(4);
 O = eye(nx);
 O(1:4,1:4) = zeros(4);
 % for real-time varying Q and P matrices
@@ -144,9 +144,9 @@ codeoptions.printlevel = 2;
 FORCES_NLP(model, codeoptions);
 
 %% simulate
-X = zeros(nx,kmax+1);
-U = zeros(nu,kmax);
-problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
+% X = zeros(nx,kmax+1);
+% U = zeros(nu,kmax);
+% problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 % problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters into one N stages array
 % params = [Xref; Qmat];
 % problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
@@ -178,18 +178,20 @@ problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages 
 X = zeros(nx,1);
 X(1:3,1) = [0.25; -0.18; 0.037]; 
 U = zeros(nu,1);
+problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 k = 1;
-[~, nrid] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+[~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
 searchrange = 20;
-while (nrid ~= kmax+1)
+
+while (nrid(k) ~= kmax+1)
     
     problem.xinit = X(:,k);
     
-    if (nrid+model.N <= kmax+2)
-        problem.all_parameters = reshape(Xref(:,nrid:nrid-1+model.N), [model.N*nx,1]);
+    if (nrid(k)+model.N <= kmax+2)
+        problem.all_parameters = reshape(Xref(:,nrid(k):nrid(k)-1+model.N), [model.N*nx,1]);
     else
-        problem.all_parameters = [reshape(Xref(:,nrid:kmax+1), [(kmax+2-nrid)*nx,1]); ...
-            repmat(Xref(:,kmax+1), nrid+model.N-(kmax+2), 1)];
+        problem.all_parameters = [reshape(Xref(:,nrid(k):kmax+1), [(kmax+2-nrid(k))*nx,1]); ...
+            repmat(Xref(:,kmax+1), nrid(k)+model.N-(kmax+2), 1)];
     end
     
     [solverout,exitflag,info] = FORCESNLPsolver(problem);
@@ -203,14 +205,16 @@ while (nrid ~= kmax+1)
     end
     
     X(:,k+1) = model.eq( [U(:,k); X(:,k)] )';
-    [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,:)'));
-%     if nrid <= searchrange 
-%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,1:2*searchrange)'));
-%     elseif nrid >= kmax-40
-%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,kmax+1-2*searchrange:kmax+1)'));
-%     else
-%         [~, nrid] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid-searchrange:nrid+searchrange)'));
-%     end
+%     [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,:)')); % search through the whole trajectory
+    if (nrid(k) <= searchrange) 
+        [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,1:2*searchrange)'));
+    elseif (nrid(k) >= kmax-searchrange)
+        [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,kmax+1-2*searchrange:kmax+1)'));
+        nrid(k+1) = nrid(k+1) + kmax + 1 - 2*searchrange - 1;
+    else
+        [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k)-searchrange:nrid(k)+searchrange)'));
+        nrid(k+1) = nrid(k+1) + nrid(k) - searchrange - 1;
+    end % search only in a smaller search range around the previous nearest reference point
     k = k + 1;
 end
 
