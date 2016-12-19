@@ -247,8 +247,8 @@ hold off;
 % figure;
 % plot(t,Xref(1,:),'--r',t,Xref(2,:),'--g',t,Xref(3,:),'--b');
 % hold on;
-% % plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:)),'b';
-% plot(t,X(1,:),'r',t,X(2,:),'g',t,X(3,:)),'b';
+% % plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:),'b');
+% plot(t,X(1,:),'r',t,X(2,:),'g',t,X(3,:),'b');
 % hold off;
 % 
 % figure;
