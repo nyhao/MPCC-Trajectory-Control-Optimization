@@ -147,10 +147,10 @@ FORCES_NLP(model, codeoptions);
 % X = zeros(nx,kmax+1);
 % U = zeros(nu,kmax);
 % problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
-% problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters into one N stages array
-% params = [Xref; Qmat];
-% problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
-
+% % problem.all_parameters = reshape(Xref, [model.N*nx,1]); % stack up parameters into one N stages array
+% % params = [Xref; Qmat];
+% % problem.all_parameters = reshape(params, [model.N*2*nx, 1]);
+% 
 % for k = 1:kmax
 %     
 %     problem.xinit = X(:,k);
@@ -176,7 +176,7 @@ FORCES_NLP(model, codeoptions);
 % end
 
 X = zeros(nx,1);
-X(1:3,1) = [0.25; -0.18; 0.037]; 
+% X(1:3,1) = [0.25; -0.18; 0.037]; 
 U = zeros(nu,1);
 problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 k = 1;
@@ -244,16 +244,18 @@ quiver3(X(1,:),X(2,:),X(3,:),X(5,:),X(6,:),X(7,:));
 % plot3(X(1,:),X(2,:),X(3,:),'+');
 hold off;
 
-% figure;
+t_new = 0:size(X,2)-1;
+
+figure;
 % plot(t,Xref(1,:),'--r',t,Xref(2,:),'--g',t,Xref(3,:),'--b');
-% hold on;
-% % plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:),'b');
-% plot(t,X(1,:),'r',t,X(2,:),'g',t,X(3,:),'b');
-% hold off;
-% 
-% figure;
+hold on;
+% plot(t,Xout(1,:),'r',t,Xout(2,:),'g',t,Xout(3,:),'b');
+plot(t_new,X(1,:),'r',t_new,X(2,:),'g',t_new,X(3,:),'b');
+hold off;
+
+figure;
 % plot(t,Xref(5,:),'--m',t,Xref(6,:),'--c',t,Xref(7,:),'--k');
-% hold on;
-% % plot(t,Xout(5,:),'m',t,Xout(6,:),'c',t,Xout(7,:),'k');
-% plot(t,X(5,:),'m',t,X(6,:),'c',t,X(7,:),'k');
-% hold off;
+hold on;
+% plot(t,Xout(5,:),'m',t,Xout(6,:),'c',t,Xout(7,:),'k');
+plot(t_new,X(5,:),'m',t_new,X(6,:),'c',t_new,X(7,:),'k');
+hold off;
