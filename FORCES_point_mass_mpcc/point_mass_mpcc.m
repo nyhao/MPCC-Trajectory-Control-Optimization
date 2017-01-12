@@ -4,8 +4,8 @@ clc;
 %% system
 T = 0.05; % sampling time for 20Hz
 m = 1; % mass
-nx = 8; % 4d position (angle around z-axis) and up to 4th derivatives
-nalx = 2; % arc length and arc speed
+nx = 20; % 4d position (angle around z-axis) and up to 4th derivatives
+nalx = 5; % arc length and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
 nalu = 1; % arc acceleration (virtual input)
 g = -9.8; % gravitational acceleration
@@ -21,8 +21,8 @@ Ac(2,6) = 1;
 Ac(3,7) = 1;
 Ac(4,8) = 1;
 
-Ac(9,10) = 1;
-% Ac(21,22) = 1;
+% Ac(9,10) = 1;
+Ac(21,22) = 1;
 
 Bc = zeros(nx+nalx,nu+nalu);
 Bc(5,1) = 1/m;
@@ -30,8 +30,8 @@ Bc(6,2) = 1/m;
 Bc(7,3) = 1/m;
 Bc(8,4) = 1/m;
 
-Bc(10,5) = 1;
-% Bc(22,5) = 1;
+% Bc(10,5) = 1;
+Bc(22,5) = 1;
 
 gc = zeros(nx+nalx,1);
 gc(7,1) = g;
@@ -46,51 +46,64 @@ Ad = A_tilde_d(1:nx+nalx,1:nx+nalx);
 Bd = A_tilde_d(1:nx+nalx,nx+nalx+1:nx+nalx+nu+nalu);
 gd = A_tilde_d(1:nx+nalx,nx+nalx+nu+nalu+1:2*(nx+nalx)+nu+nalu) * gc;
 
-% % finite differentiation
-% % a(i+1) = v(i+1) - v(i)
-% Ad(9,9) = 0;
-% Ad(10,10) = 0;
-% Ad(11,11) = 0;
-% Ad(12,12) = 0;
-% Ad(9,5) = -1/T;
-% Ad(10,6) = -1/T;
-% Ad(11,7) = -1/T;
-% Ad(12,8) = -1/T;
-% 
-% % j(i+1) = a(i+1) - a(i)
-% Ad(13,13) = 0;
-% Ad(14,14) = 0;
-% Ad(15,15) = 0;
-% Ad(16,16) = 0;
-% Ad(13,9) = -1/T;
-% Ad(14,10) = -1/T;
-% Ad(15,11) = -1/T;
-% Ad(16,12) = -1/T;
-% 
-% % s(i+1) = j(i+1) - j(i)
-% Ad(17,17) = 0;
-% Ad(18,18) = 0;
-% Ad(19,19) = 0;
-% Ad(20,20) = 0;
-% Ad(17,13) = -1/T;
-% Ad(18,14) = -1/T;
-% Ad(19,15) = -1/T;
-% Ad(20,16) = -1/T;
+% finite differentiation
+% a(i+1) = v(i+1) - v(i)
+Ad(9,9) = 0;
+Ad(10,10) = 0;
+Ad(11,11) = 0;
+Ad(12,12) = 0;
+Ad(9,5) = -1/T;
+Ad(10,6) = -1/T;
+Ad(11,7) = -1/T;
+Ad(12,8) = -1/T;
+
+% j(i+1) = a(i+1) - a(i)
+Ad(13,13) = 0;
+Ad(14,14) = 0;
+Ad(15,15) = 0;
+Ad(16,16) = 0;
+Ad(13,9) = -1/T;
+Ad(14,10) = -1/T;
+Ad(15,11) = -1/T;
+Ad(16,12) = -1/T;
+
+% s(i+1) = j(i+1) - j(i)
+Ad(17,17) = 0;
+Ad(18,18) = 0;
+Ad(19,19) = 0;
+Ad(20,20) = 0;
+Ad(17,13) = -1/T;
+Ad(18,14) = -1/T;
+Ad(19,15) = -1/T;
+Ad(20,16) = -1/T;
+
+% theta''(i+1) = theta'(i+1) - theta'(i)
+Ad(23,23) = 0;
+Ad(23,22) = -1/T;
+
+% theta'''(i+1) = theta''(i+1) - theta''(i)
+Ad(24,24) = 0;
+Ad(24,23) = -1/T;
+
+% theta''(i+1) = theta'(i+1) - theta'(i)
+Ad(25,25) = 0;
+Ad(25,24) = -1/T;
 
 %% MPCC setup
 % for constant Q and P matrices
-contourpenalty = 1000000; % using
-lagpenalty = 1000000; % using
-zpenalty = 1000000; % using
-v_fd_factor = 0.0001;
+contourpenalty = 10000; 
+lagpenalty = 10000; 
+zpenalty = 10000; 
+dthetapenalty = 100;
+fd_factor = 0.000001;
 Qp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
-Qv = v_fd_factor*eye(4);
-Qfd = v_fd_factor*eye(nx-12);
-Qdtheta = 100; % using
+Qfd = fd_factor*eye(nx-12);
+Qdtheta = dthetapenalty; 
+Qfdtheta = fd_factor*eye(nalx-3);
 Pp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
-Pv = v_fd_factor*eye(4);
-Pfd = v_fd_factor*eye(nx-12);
-Pdtheta = 100; % using
+Pfd = fd_factor*eye(nx-12);
+Pdtheta = dthetapenalty; 
+Pfdtheta = fd_factor*eye(nalx-3);
 % boundaries
 umin = [-4, -4, -10, -4, 0];    umax = [4, 4, 10, 4, 10]; % u limits based on drones max force
 xmin = -inf*ones(1,nx+nalx);    xmax = inf*ones(1,nx+nalx); % no boundaries in space
@@ -127,8 +140,9 @@ for i = 1:model.N-1
         cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
         -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
         sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-        z(nu+nalu+3)] - Qdtheta*(z(nu+nalu+nx+2)) %+ ... 
-        %(z(nu+nalu+13:nu+nalu+nx))'*Qfd*(z(nu+nalu+13:nu+nalu+nx));
+        z(nu+nalu+3)] - Qdtheta*(z(nu+nalu+nx+2)) + ... 
+        (z(nu+nalu+13:nu+nalu+nx))'*Qfd*(z(nu+nalu+13:nu+nalu+nx)) + ...
+        (z(nu+nalu+nx+4:nu+nalu+nx+nalx))'*Qfdtheta*(z(nu+nalu+nx+4:nu+nalu+nx+nalx));
 end
 model.objective{model.N} = @(z) [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
     cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
@@ -139,14 +153,17 @@ model.objective{model.N} = @(z) [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(n
     cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
     -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
     sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-    z(nu+nalu+3)] - Pdtheta*(z(nu+nalu+nx+2)) %+ ...
-    %(z(nu+nalu+13:nu+nalu+nx))'*Pfd*(z(nu+nalu+13:nu+nalu+nx));
+    z(nu+nalu+3)] - Pdtheta*(z(nu+nalu+nx+2)) + ...
+    (z(nu+nalu+13:nu+nalu+nx))'*Pfd*(z(nu+nalu+13:nu+nalu+nx)) + ...
+    (z(nu+nalu+nx+4:nu+nalu+nx+nalx))'*Pfdtheta*(z(nu+nalu+nx+4:nu+nalu+nx+nalx));
     
 % equalities
 model.eq = @(z) Ad*z(nu+nalu+1:nu+nalu+nx+nalx) + Bd*z(1:nu+nalu) + gd;
 
-model.E = [zeros(nx+nalx,nu+nalu), eye(nx+nalx)];
-% model.E = [zeros(nx+nalx,nu+nalu), eye(nx+nalx) + diag([zeros(4,1); (-1/T)*ones(12,1); zeros(2,1)], -4)];
+% model.E = [zeros(nx+nalx,nu+nalu), eye(nx+nalx)];
+model.E = [zeros(nx+nalx,nu+nalu), ...
+    eye(nx+nalx) + diag([zeros(4,1); (-1/T)*ones(12,1); zeros(nalx,1)], -4) + ...
+    diag([zeros(nx+1,1); (-1/T)*ones(3,1)], -1)];
 
 % initial state
 model.xinitidx = nu+nalu+1:nu+nalu+nx+nalx;
