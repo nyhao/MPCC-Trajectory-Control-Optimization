@@ -2,21 +2,21 @@
 %
 %   OUTPUT = FORCESNLPsolver(PARAMS) solves a multistage problem
 %   subject to the parameters supplied in the following struct:
-%       PARAMS.x0 - column vector of length 330
-%       PARAMS.xinit - column vector of length 25
+%       PARAMS.x0 - column vector of length 220
+%       PARAMS.xinit - column vector of length 15
 %
 %   OUTPUT returns the values of the last iteration of the solver where
-%       OUTPUT.x01 - column vector of size 30
-%       OUTPUT.x02 - column vector of size 30
-%       OUTPUT.x03 - column vector of size 30
-%       OUTPUT.x04 - column vector of size 30
-%       OUTPUT.x05 - column vector of size 30
-%       OUTPUT.x06 - column vector of size 30
-%       OUTPUT.x07 - column vector of size 30
-%       OUTPUT.x08 - column vector of size 30
-%       OUTPUT.x09 - column vector of size 30
-%       OUTPUT.x10 - column vector of size 30
-%       OUTPUT.x11 - column vector of size 30
+%       OUTPUT.x01 - column vector of size 20
+%       OUTPUT.x02 - column vector of size 20
+%       OUTPUT.x03 - column vector of size 20
+%       OUTPUT.x04 - column vector of size 20
+%       OUTPUT.x05 - column vector of size 20
+%       OUTPUT.x06 - column vector of size 20
+%       OUTPUT.x07 - column vector of size 20
+%       OUTPUT.x08 - column vector of size 20
+%       OUTPUT.x09 - column vector of size 20
+%       OUTPUT.x10 - column vector of size 20
+%       OUTPUT.x11 - column vector of size 20
 %
 %   [OUTPUT, EXITFLAG] = FORCESNLPsolver(PARAMS) returns additionally
 %   the integer EXITFLAG indicating the state of the solution with 

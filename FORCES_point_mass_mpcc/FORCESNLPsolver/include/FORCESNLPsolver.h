@@ -90,11 +90,11 @@ typedef double FORCESNLPsolverINTERFACE_FLOAT;
 /* fill this with data before calling the solver! */
 typedef struct FORCESNLPsolver_params
 {
-    /* vector of size 330 */
-    FORCESNLPsolver_FLOAT x0[330];
+    /* vector of size 220 */
+    FORCESNLPsolver_FLOAT x0[220];
 
-    /* vector of size 25 */
-    FORCESNLPsolver_FLOAT xinit[25];
+    /* vector of size 15 */
+    FORCESNLPsolver_FLOAT xinit[15];
 
 } FORCESNLPsolver_params;
 
@@ -103,38 +103,38 @@ typedef struct FORCESNLPsolver_params
 /* the desired variables are put here by the solver */
 typedef struct FORCESNLPsolver_output
 {
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x01[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x01[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x02[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x02[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x03[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x03[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x04[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x04[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x05[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x05[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x06[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x06[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x07[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x07[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x08[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x08[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x09[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x09[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x10[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x10[20];
 
-    /* vector of size 30 */
-    FORCESNLPsolver_FLOAT x11[30];
+    /* vector of size 20 */
+    FORCESNLPsolver_FLOAT x11[20];
 
 } FORCESNLPsolver_output;
 
