@@ -112,6 +112,21 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 #endif	 
     copyMArrayToC(mxGetPr(par), params.xinit, 15);
 
+	par = mxGetField(PARAMS, 0, "all_parameters");
+#ifdef MEXARGMUENTCHECKS
+    if( par == NULL )	{
+        mexErrMsgTxt("PARAMS.all_parameters not found");
+    }
+    if( !mxIsDouble(par) )
+    {
+    mexErrMsgTxt("PARAMS.all_parameters must be a double.");
+    }
+    if( mxGetM(par) != 165 || mxGetN(par) != 1 ) {
+    mexErrMsgTxt("PARAMS.all_parameters must be of size [165 x 1]");
+    }
+#endif	 
+    copyMArrayToC(mxGetPr(par), params.all_parameters, 165);
+
 	#if FORCESNLPsolver_SET_PRINTLEVEL > 0
 		/* Prepare file for printfs */
 		/*fp = freopen("stdout_temp","w+",stdout);*/
