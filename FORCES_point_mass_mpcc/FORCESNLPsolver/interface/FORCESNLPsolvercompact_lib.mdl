@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "1/24/2017 4:06:50 PM"
+  Created		  "2/27/2017 5:32:21 PM"
   Creator		  "embotech GmbH"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech GmbH"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "1/24/2017 4:06:50 PM"
+  LastModifiedDate	  "2/27/2017 5:32:21 PM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -771,6 +771,7 @@ Model {
       Position		      [170, 99, 650, 180]
       ZOrder		      1
       FunctionName	      "FORCESNLPsolver_simulinkBlockcompact"
+	  SFunctionModules	      "FORCESNLPsolver FORCESNLPsolver_simulinkBlockcompact"
       EnableBusSupport	      off
       Object {
 	$PropName		"MaskObject"
