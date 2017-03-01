@@ -116,7 +116,7 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
   a36=(a36/a38);
   a41=(a33*a36);
   a18=(a18+a41);
-  a41=1000.;
+  a41=100000.;
   a18=(a41*a18);
          a42=(a0*a1);
   a42=(a42+a3);
@@ -365,12 +365,10 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
   a99=sqrt(a99);
   a17=(a96*a99);
   a50=(a50+a17);
-  a17=1.0000000000000001e-01;
-         a115=arg[0] ? arg[0][18] : 0;
-  a17=(a17*a115);
+  a17=arg[0] ? arg[0][18] : 0;
   a50=(a50-a17);
-  a17=1.0000000000000000e-02;
-  a115=arg[0] ? arg[0][13] : 0;
+  a17=1.0000000000000001e-01;
+         a115=arg[0] ? arg[0][13] : 0;
          a116=(a17*a115);
          a117=(a116*a115);
          a118=arg[0] ? arg[0][14] : 0;
@@ -787,7 +785,7 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
   a0=(a0*a1);
   a14=(a14-a0);
   if (res[1]!=0) res[1][7]=a14;
-  a14=-1.0000000000000001e-01;
+  a14=-1.;
   if (res[1]!=0) res[1][8]=a14;
   a17=(a17*a117);
   a124=(a124+a17);

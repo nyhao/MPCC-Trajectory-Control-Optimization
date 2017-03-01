@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "3/1/2017 2:00:30 PM"
+  Created		  "3/1/2017 11:09:29 AM"
   Creator		  "embotech GmbH"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech GmbH"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "3/1/2017 2:00:30 PM"
+  LastModifiedDate	  "3/1/2017 11:09:29 AM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -767,17 +767,17 @@ Model {
       BlockType		      S-Function
       Name		      "FORCESNLPsolver"
       SID		      "1"
-      Ports		      [3, 1]
-      Position		      [170, 99, 650, 180]
+      Ports		      [3, 11]
+      Position		      [170, 99, 650, 187]
       ZOrder		      1
-      FunctionName	      "FORCESNLPsolver_simulinkBlockcompact"
-	  SFunctionModules	      "FORCESNLPsolver FORCESNLPsolver_simulinkBlockcompact"
+      FunctionName	      "FORCESNLPsolver_simulinkBlock"
+	  SFunctionModules	      "FORCESNLPsolver FORCESNLPsolver_simulinkBlock"
       EnableBusSupport	      off
       Object {
 	$PropName		"MaskObject"
 	$ObjectID		19
 	$ClassName		"Simulink.Mask"
-	Type			"FORCESNLPsolver_simulinkBlockcompact"
+	Type			"FORCESNLPsolver_simulinkBlock"
 	Description		" ---- Simulink block encapsulating your customized solver FORCESNLPsolver ---- \n\n"
 				"FORCESNLPsolver : A fast customized optimization solver.\n"
 "\n"
@@ -801,7 +801,7 @@ Model {
 "jurisdiction in case of any dispute.\n"
 "\n"
 
-	Help			"FORCESNLPsolver_simulinkBlockcompact provides an easy Simulink interface for simulating your customized solver.  \n"
+	Help			"FORCESNLPsolver_simulinkBlock provides an easy Simulink interface for simulating your customized solver.  \n"
 	"\nOUTPUTS = FORCESNLPsolver(INPUTS) solves an optimization problem where:\n\n"
 	"INPUTS:\n"
 	" - x0 - column vector of length 220\n "
@@ -809,14 +809,34 @@ Model {
 " - all_parameters - column vector of length 165\n "
 
 	"\nOUTPUTS:\n"
-	" - outputs - column vector of length 220\n "
+	" - x01 - column vector of length 20\n "
+" - x02 - column vector of length 20\n "
+" - x03 - column vector of length 20\n "
+" - x04 - column vector of length 20\n "
+" - x05 - column vector of length 20\n "
+" - x06 - column vector of length 20\n "
+" - x07 - column vector of length 20\n "
+" - x08 - column vector of length 20\n "
+" - x09 - column vector of length 20\n "
+" - x10 - column vector of length 20\n "
+" - x11 - column vector of length 20\n "
 
 	"\n For more information, see https://www.embotech.com/FORCES-Pro/How-to-use/Simulink-Interface/Simulink-Block \n "
 
 	Display			"port_label('input', 1, 'x0') \n  "
 "port_label('input', 2, 'xinit') \n  "
 "port_label('input', 3, 'all_parameters') \n  "
-"port_label('output', 1, 'outputs') \n "
+"port_label('output', 1, 'x01') \n "
+"port_label('output', 2, 'x02') \n "
+"port_label('output', 3, 'x03') \n "
+"port_label('output', 4, 'x04') \n "
+"port_label('output', 5, 'x05') \n "
+"port_label('output', 6, 'x06') \n "
+"port_label('output', 7, 'x07') \n "
+"port_label('output', 8, 'x08') \n "
+"port_label('output', 9, 'x09') \n "
+"port_label('output', 10, 'x10') \n "
+"port_label('output', 11, 'x11') \n "
 "if( exist('forcesprologo.jpg','file') ), image(imread('forcesprologo.jpg'),'center','on'); elseif( exist(['interface',filesep,'forcesprologo.jpg'],'file') ), image(imread(['interface',filesep,'forcesprologo.jpg']),'center','on'); elseif( exist(['FORCESNLPsolver',filesep,'interface',filesep,'forcesprologo.jpg'],'file') ), image(imread(['FORCESNLPsolver',filesep,'interface',filesep,'forcesprologo.jpg']),'center','on'); end \n "
 
       }

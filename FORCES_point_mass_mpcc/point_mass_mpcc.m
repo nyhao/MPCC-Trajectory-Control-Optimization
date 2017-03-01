@@ -2,8 +2,8 @@ clear;
 clc;
 
 %% system
-T = 0.05; % sampling time for 20Hz
-m = 0.4; % mass
+T = 1/30; % sampling time for 30Hz
+m = 0.5; % mass
 nx = 12; % 4d position (angle around z-axis) and up to 4th derivatives
 nalx = 3; % arc length and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
@@ -120,22 +120,22 @@ Bd(15,5) = -1/T;
 
 %% MPCC setup
 % for constant Q and P matrices
-contourpenalty = 1000; 
-lagpenalty = 1000; 
+contourpenalty = 100000; 
+lagpenalty = 100000; 
 zpenalty = 1000; 
-dthetapenalty = 0.1;
-fd_factor = 0.01;
+dthetapenalty = 1;
+fd_factor = 0.1;
 % Qp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Qp = [contourpenalty, 0; 0, lagpenalty];
-Qlag = 1000;
-Qcontour = 1000;
+Qlag = lagpenalty;
+Qcontour = contourpenalty;
 Qj = fd_factor*eye(4);
 Qdtheta = dthetapenalty; 
 Qjtheta = fd_factor*eye(1);
 % Pp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Pp = [contourpenalty, 0; 0, lagpenalty];
-Plag = 1000;
-Pcontour = 1000;
+Plag = lagpenalty;
+Pcontour = contourpenalty;
 Pj = fd_factor*eye(4);
 Pdtheta = dthetapenalty; 
 Pjtheta = fd_factor*eye(1);
@@ -144,7 +144,7 @@ umin = [-4, -4, 0, -4, 0];    umax = [4, 4, 10, 4, 10]; % u limits based on dron
 xmin = -inf*ones(1,nx+nalx);    xmax = inf*ones(1,nx+nalx); % no boundaries in space
 
 %% reference trajectory
-kmax = 320; % 8s trajectory for 20Hz
+kmax = 320;
 theta = 0:0.05:0.05*kmax;
 dot_theta = zeros(1,kmax+1);
 % x = cos(theta);
@@ -426,9 +426,12 @@ FORCES_NLP(model, codeoptions);
 
 %% simulate
 
-X = zeros(nx+nalx,1);
+X = zeros(nx+nalx,kmax);
 % X(1:3,1) = [1;1;1];
-U = zeros(nu+nalu,1);
+U = zeros(nu+nalu,kmax);
+solvetime = zeros(1,kmax);
+info = zeros(1,kmax);
+timeElapsed = zeros(1,kmax);
 problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 k = 1;
 [~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
@@ -539,13 +542,13 @@ end
 %% plot
 
 % s = 0:(1/(size(X,2)-1))*0.05*kmax:0.05*kmax;
-s = X(13,:);
+s = X(13,1:k);
 
 figure;
 subplot(3,1,1);
 plot(s,ppval(xpp,s),'--r',s,ppval(ypp,s),'--g',s,ppval(zpp,s),'--b');
 hold on;
-plot(s,X(1,:),'r',s,X(2,:),'g',s,X(3,:),'b');
+plot(s,X(1,1:k),'r',s,X(2,1:k),'g',s,X(3,1:k),'b');
 hold off;
 title('Position Plot');
 legend('xref','yref','zref','x','y','z');
@@ -553,13 +556,13 @@ legend('xref','yref','zref','x','y','z');
 subplot(3,1,2);
 plot(s,ppval(xppdot,s),'--m',s,ppval(yppdot,s),'--c',s,ppval(zppdot,s),'--k');
 hold on;
-plot(s,X(5,:),'m',s,X(6,:),'c',s,X(7,:),'k');
+plot(s,X(5,1:k),'m',s,X(6,1:k),'c',s,X(7,1:k),'k');
 hold off;
 title('Velocity Plot');
 legend('vxref','vyref','vzref','vx','vy','vz');
 
 subplot(3,1,3);
 haha = s(2:end);
-plot(haha,U(1,:),'r',haha,U(2,:),'g',haha,U(3,:),'b');
+plot(haha,U(1,1:k-1),'r',haha,U(2,1:k-1),'g',haha,U(3,1:k-1),'b');
 title('Input Plot');
 legend('Fx','Fy','Fz');
