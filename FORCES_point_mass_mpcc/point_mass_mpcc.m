@@ -1,5 +1,6 @@
 clear;
 clc;
+close all;
 
 %% system
 T = 1/30; % sampling time for 30Hz
@@ -8,7 +9,7 @@ nx = 12; % 4d position (angle around z-axis) and up to 4th derivatives
 nalx = 3; % arc length and up to 4th derivatives
 nu = 4; % force acting on the acceleration states
 nalu = 1; % arc acceleration (virtual input)
-g = -9.8; % gravitational acceleration
+g = -9.81; % gravitational acceleration
 
 % continuous state space matrices
 % dot.X = Ac*X + Bc*U
@@ -120,59 +121,102 @@ Bd(15,5) = -1/T;
 
 %% MPCC setup
 % for constant Q and P matrices
-contourpenalty = 100000; 
-lagpenalty = 100000; 
+contourpenalty = 10000; 
+lagpenalty = 10000; 
+orientpenalty = 0;
 zpenalty = 1000; 
-dthetapenalty = 1;
+progresspenalty = 1;
 fd_factor = 0.1;
 % Qp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Qp = [contourpenalty, 0; 0, lagpenalty];
 Qlag = lagpenalty;
 Qcontour = contourpenalty;
+Qorient = orientpenalty;
 Qj = fd_factor*eye(4);
-Qdtheta = dthetapenalty; 
-Qjtheta = fd_factor*eye(1);
+Qdtheta = progresspenalty; 
+Qjtheta = fd_factor;
 % Pp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Pp = [contourpenalty, 0; 0, lagpenalty];
 Plag = lagpenalty;
 Pcontour = contourpenalty;
+Porient = orientpenalty;
 Pj = fd_factor*eye(4);
-Pdtheta = dthetapenalty; 
-Pjtheta = fd_factor*eye(1);
+Pdtheta = progresspenalty; 
+Pjtheta = fd_factor;
 % boundaries
-umin = [-4, -4, 0, -4, 0];    umax = [4, 4, 10, 4, 10]; % u limits based on drones max force
+umin = [-4, -4, 0, -4, -10];    umax = [4, 4, 10, 4, 10]; % u limits based on drones max force
 xmin = -inf*ones(1,nx+nalx);    xmax = inf*ones(1,nx+nalx); % no boundaries in space
+xmin(1,14) = 0; % only allows forward progress
 
 %% reference trajectory
 kmax = 320;
-theta = 0:0.05:0.05*kmax;
+% theta = 0:T:T*kmax;
 dot_theta = zeros(1,kmax+1);
-% x = cos(theta);
-% y = sin(theta);
-% z = zeros(1,kmax+1);
-% z = theta;
-% phi = @(pg) atan2(cos(pg),-sin(pg));
-% yaw = phi(theta);
-xtarget = [0, 1, 1, 0, 0];
-ytarget = [0, 0, 1, 1, 0];
-ztarget = [0, 0.25, 0.5, 0.75, 1];
-% xtarget = [0, 1, 1, 0, 0, 1];
-% ytarget = [0, 0, 1, 1, 0, 0];
-% ztarget = [0, 0.5, 1, 0.5, 0, 0.5];
-thetatarget = linspace(theta(1), theta(end), length(xtarget));
-% thetatarget = cumsum(sqrt([0,diff(xtarget)].^2 + [0,diff(ytarget)].^2 + [0,diff(ztarget)].^2));
-xpp = spline(thetatarget,xtarget);
-ypp = spline(thetatarget,ytarget);
-zpp = spline(thetatarget,ztarget);
-xppdot = fnder(xpp);
-yppdot = fnder(ypp);
-zppdot = fnder(zpp);
-x = ppval(xpp,theta);
-y = ppval(ypp,theta);
-z = ppval(zpp,theta);
-phi = @(pg) atan2(ppval(yppdot,pg),ppval(xppdot,pg));
-yaw = phi(theta);
-Xref = [x; y; z; yaw; theta; dot_theta];
+targetpoints = [0, 1, 1, 0, 0; 0, 0, 1, 1, 0; 0, 0, 0, 0, 0];
+% targetpoints = [0, 1, 1.7, 1, 0, -1, -1.7, -1, 0; 0, -1, 0, 1, 0, -1, 0, 1, 0; 0, 0, 0, 0, 0, 0, 0, 0, 0];
+% thetatarget = linspace(theta(1), theta(end), length(targetpoints(1,:)));
+% xpp = spline(thetatarget,targetpoints(1,:));
+% ypp = spline(thetatarget,targetpoints(2,:));
+% zpp = spline(thetatarget,targetpoints(3,:));
+% xppdot = fnder(xpp);
+% yppdot = fnder(ypp);
+% zppdot = fnder(zpp);
+% x = ppval(xpp,theta);
+% y = ppval(ypp,theta);
+% z = ppval(zpp,theta);
+% yaw = atan2(ppval(yppdot,theta),ppval(xppdot,theta));
+% Xref = [x; y; z; yaw; theta; dot_theta];
+thetatarget = cumsum([0;((diff(targetpoints.').^2)*ones(3,1)).^(1/4)]).';
+theta = linspace(thetatarget(1), thetatarget(end), kmax+1);
+ppp = cscvn(targetpoints);
+
+% periodic spline
+loop = 1;
+max_loop = 200;
+if loop
+    temp_theta = theta;
+    if isequal(targetpoints(:,1),targetpoints(:,end))
+        new_pp_breaks = [ppp.breaks];
+        for n = 1:max_loop-1
+            new_pp_breaks = [new_pp_breaks, ppp.breaks(2:end)+ppp.breaks(end)*n];
+            theta = [theta, temp_theta(2:end)+temp_theta(end)*n];
+        end
+        new_pp_coefs = repmat(ppp.coefs, max_loop, 1);
+        ppp = ppmak(new_pp_breaks, new_pp_coefs, 3);
+        dot_theta = zeros(1,size(theta,2));
+    else
+        disp('Please make sure your starting point and end point is the same for periodic trajectory.');
+    end
+end
+
+pppdot = fnder(ppp);
+path = ppval(ppp,theta);
+pathtan = ppval(pppdot,theta);
+yaw = atan2(pathtan(2,:),pathtan(1,:));
+Xref = [path; yaw; theta; dot_theta];
+
+% timed mpcc test
+% num_timed_point = 2;
+% num_timed_sect = num_timed_point/2;
+% timing = 1;
+% timed_index = zeros(1,num_timed_point);
+% timed_speed = zeros(1,num_timed_point);
+% timed_index(1) = find(Xref(1,:) == targetpoints(1,2) & Xref(2,:) == targetpoints(2,2) & Xref(3,:) == targetpoints(3,2), 1);
+% timed_index(2) = find(Xref(1,:) == targetpoints(1,3) & Xref(2,:) == targetpoints(2,3) & Xref(3,:) == targetpoints(3,3), 1);
+% % timed_index(3) = find(Xref(1,:) == targetpoints(1,4) & Xref(2,:) == targetpoints(2,4) & Xref(3,:) == targetpoints(3,4), 1);
+% % timed_index(4) = find(Xref(1,:) == targetpoints(1,5) & Xref(2,:) == targetpoints(2,5) & Xref(3,:) == targetpoints(3,5), 1);
+% for i = 1:2:num_timed_point
+%     timed_speed(i) = 0;
+%     timed_speed(i+1) = (Xref(5,timed_index(i+1))-Xref(5,timed_index(i)))/timing;
+% end
+% timed_speed = [timed_speed, 0];
+% indicator_gradient = 1000;
+% timingpenalty = 100;
+% progresspenalty = [repmat([-progresspenalty, timingpenalty], 1, num_timed_sect), -progresspenalty];
+% dprefval = sumtanh(timed_speed, indicator_gradient, Xref, timed_index, num_timed_point);
+% Qdtval = sumtanh(progresspenalty, indicator_gradient, Xref, timed_index, num_timed_point);
+dthetapenalty = 1000;
+Qdtval = @(dt) (dt > 0)*(dthetapenalty + progresspenalty) - progresspenalty;
 
 polyorder = 2;
 
@@ -183,23 +227,10 @@ polyorder = 2;
 model.N     = 11;    % horizon length
 model.nvar  = nx+nalx+nu+nalu;    % number of variables
 model.neq   = nx+nalx;    % number of equality constraints
-model.npar  = 3*(polyorder+1)+3*(polyorder); % number of runtime parameters
+model.npar  = 4*(polyorder+1)+3*(polyorder); % number of runtime parameters
 
 % objective 
 for i = 1:model.N-1
-%     model.objective{i} = @(z) [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%         cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%         -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%         sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%         z(nu+nalu+3)]'*Qp* ...
-%         [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%         cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%         -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%         sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%         z(nu+nalu+3)] - Qdtheta*(z(nu+nalu+nx+2)) + ...
-%         (z(nu+nalu+9:nu+nalu+nx))'*Qj*(z(nu+nalu+9:nu+nalu+nx)) + ...
-%         (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Qjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
-
 %     model.objective{i} = @(z,par) ...
 %         [sin(atan2(polyval(par(12:13)',z(nu+nalu+nx+1)),polyval(par(10:11)',z(nu+nalu+nx+1)))) ...
 %         *(z(nu+nalu+1)-polyval(par(1:3)',z(nu+nalu+nx+1))) - ...
@@ -258,6 +289,41 @@ for i = 1:model.N-1
 %         sin(atan2(polyval(par(14:15)',z(nu+nalu+nx+1)),polyval(par(12:13)',z(nu+nalu+nx+1)))) ...
 %         *(z(nu+nalu+3)-polyval(par(7:9)',z(nu+nalu+nx+1)))];
 
+%     model.objective{i} = @(z,par) ...
+%         [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%         [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)]*Qlag* ...
+%         [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%         [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)] + ...
+%         sqrt((z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)))^2 + ...
+%         (z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)))^2 + (z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1)))^2 - ...
+%         ([z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%         [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2)*Qcontour* ...
+%         sqrt((z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)))^2 + ...
+%         (z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)))^2 + (z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1)))^2 - ...
+%         ([z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%         z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%         [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%         polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
+%         (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Qorient* ...
+%         (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) - ...
+%         Qdtheta*(z(nu+nalu+nx+2)) + ...
+%         (z(nu+nalu+9:nu+nalu+nx))'*Qj*(z(nu+nalu+9:nu+nalu+nx)) + ...
+%         (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Qjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
+
     model.objective{i} = @(z,par) ...
         [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
         z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
@@ -286,24 +352,13 @@ for i = 1:model.N-1
         z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
         [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
         polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
-        polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) - ...
-        Qdtheta*(z(nu+nalu+nx+2)) + ...
+        polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
+        (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Qorient* ...
+        (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) + ...
+        (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
         (z(nu+nalu+9:nu+nalu+nx))'*Qj*(z(nu+nalu+9:nu+nalu+nx)) + ...
         (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Qjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
 end
-% model.objective{model.N} = @(z) [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%     cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%     -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%     sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%     z(nu+nalu+3)]'*Pp* ...
-%     [sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%     cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%     -cos(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+1)-cos(z(nu+nalu+nx+1))) - ...
-%     sin(phi(z(nu+nalu+nx+1)))*(z(nu+nalu+2)-sin(z(nu+nalu+nx+1))); ...
-%     z(nu+nalu+3)] - Pdtheta*(z(nu+nalu+nx+2)) + ...
-%     (z(nu+nalu+9:nu+nalu+nx))'*Pj*(z(nu+nalu+9:nu+nalu+nx)) + ...
-%     (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Pjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
-
 % model.objective{model.N} = @(z,par) ...
 %     [sin(atan2(polyval(par(12:13)',z(nu+nalu+nx+1)),polyval(par(10:11)',z(nu+nalu+nx+1)))) ...
 %     *(z(nu+nalu+1)-polyval(par(1:3)',z(nu+nalu+nx+1))) - ...
@@ -362,6 +417,41 @@ end
 %         sin(atan2(polyval(par(14:15)',z(nu+nalu+nx+1)),polyval(par(12:13)',z(nu+nalu+nx+1)))) ...
 %         *(z(nu+nalu+3)-polyval(par(7:9)',z(nu+nalu+nx+1)))];
 
+% model.objective{model.N} = @(z,par) ...
+%     [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)]*Plag* ...
+%     [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)] + ...
+%     sqrt((z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)))^2 + ...
+%     (z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)))^2 + (z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1)))^2 - ...
+%     ([z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2)*Pcontour* ...
+%     sqrt((z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)))^2 + ...
+%     (z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)))^2 + (z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1)))^2 - ...
+%     ([z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+%     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
+%     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
+%     polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
+%     (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Porient* ...
+%     (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) - ...
+%     Pdtheta*(z(nu+nalu+nx+2)) + ...
+%     (z(nu+nalu+9:nu+nalu+nx))'*Pj*(z(nu+nalu+9:nu+nalu+nx)) + ...
+%     (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Pjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
+
 model.objective{model.N} = @(z,par) ...
     [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
     z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
@@ -390,11 +480,13 @@ model.objective{model.N} = @(z,par) ...
     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
-    polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) - ...
-    Pdtheta*(z(nu+nalu+nx+2)) + ...
+    polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
+    (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Porient* ...
+    (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) + ...
+    (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
     (z(nu+nalu+9:nu+nalu+nx))'*Pj*(z(nu+nalu+9:nu+nalu+nx)) + ...
     (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Pjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
-    
+
 % equalities
 model.eq = @(z) Ad*z(nu+nalu+1:nu+nalu+nx+nalx) + Bd*z(1:nu+nalu) + gd;
 
@@ -424,13 +516,13 @@ codeoptions.maxit = 1000;
 % generate code
 FORCES_NLP(model, codeoptions);
 
-%% simulate
+%% simulate 1
 
 X = zeros(nx+nalx,kmax);
 % X(1:3,1) = [1;1;1];
 U = zeros(nu+nalu,kmax);
 solvetime = zeros(1,kmax);
-info = zeros(1,kmax);
+iters = zeros(1,kmax);
 timeElapsed = zeros(1,kmax);
 problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
 k = 1;
@@ -444,15 +536,22 @@ while (nrid(k) ~= kmax+1)
     problem.xinit = X(:,k);
     
     % locally fit quadratic splines
-    if (nrid(k) >= kmax-fitlength)
-        fitrange = nrid(k)-fitlength:kmax+1;
+    if ~loop
+        if (nrid(k) >= kmax-fitlength)
+            fitrange = nrid(k)-fitlength:kmax+1;
+        else
+            fitrange = nrid(k):nrid(k)+fitlength;
+        end
     else
-        fitrange = nrid(k):nrid(k)+fitlength;
+        fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
     end
-%     fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
-    px = polyfit(theta(fitrange),x(fitrange),polyorder);
-    py = polyfit(theta(fitrange),y(fitrange),polyorder);
-    pz = polyfit(theta(fitrange),z(fitrange),polyorder);
+%     px = polyfit(theta(fitrange),x(fitrange),polyorder);
+%     py = polyfit(theta(fitrange),y(fitrange),polyorder);
+%     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
+    px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+    py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+    pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+    ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
     dpx = polyder(px);
     dpy = polyder(py);
     dpz = polyder(pz);
@@ -480,7 +579,7 @@ while (nrid(k) ~= kmax+1)
             dpz(2) = 0;
         end
     end
-    qs = [px'; py'; pz'; dpx'; dpy'; dpz'];
+    qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
     
     problem.all_parameters = repmat(qs, model.N, 1);
     
@@ -510,7 +609,8 @@ while (nrid(k) ~= kmax+1)
     
     % real-time plot
     clf;
-    axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
+%     axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
+    axis([-2 2 -2 2 -0.1 1.1]);
     hold on;
     plot3(Xref(1,:),Xref(2,:),Xref(3,:),'--');
     plot3(X(1,k),X(2,k),X(3,k),'or');
@@ -521,20 +621,16 @@ while (nrid(k) ~= kmax+1)
     
     % search nearest reference point for the next time step
 %     [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,:)')); % search through the whole trajectory
-    if (nrid(k) >= kmax-searchlength)
-        [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):kmax+1)'));
+    if ~loop
+        if (nrid(k) >= kmax-searchlength)
+            [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):kmax+1)'));
+        else
+            [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):nrid(k)+searchlength)'));
+        end % search only in a smaller search range around the previous nearest reference point
     else
         [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):nrid(k)+searchlength)'));
-    end % search only in a smaller search range around the previous nearest reference point
+    end
     nrid(k+1) = nrid(k+1) + nrid(k) - 1; % non-reversal path
-%     if (nrid(k) >= 257)
-%         [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,1:100)'));
-% %         X(13,k+1) = Xref(5,nrid(k+1));
-%         X(13,k+1) = X(13,k+1) - 12.8;
-%     else
-%         [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):nrid(k)+searchlength)'));
-%         nrid(k+1) = nrid(k+1) + nrid(k) - 1;
-%     end  % infinity loop (hack)
     timeElapsed(k) = toc;
     k = k + 1;
 end
@@ -543,10 +639,35 @@ end
 
 % s = 0:(1/(size(X,2)-1))*0.05*kmax:0.05*kmax;
 s = X(13,1:k);
+ref_state = ppval(ppp,s);
+ref_vel = ppval(pppdot,s); 
+
+% figure;
+% subplot(3,1,1);
+% plot(s,ppval(xpp,s),'--r',s,ppval(ypp,s),'--g',s,ppval(zpp,s),'--b');
+% hold on;
+% plot(s,X(1,1:k),'r',s,X(2,1:k),'g',s,X(3,1:k),'b');
+% hold off;
+% title('Position Plot');
+% legend('xref','yref','zref','x','y','z');
+% 
+% subplot(3,1,2);
+% plot(s,ppval(xppdot,s),'--m',s,ppval(yppdot,s),'--c',s,ppval(zppdot,s),'--k');
+% hold on;
+% plot(s,X(5,1:k),'m',s,X(6,1:k),'c',s,X(7,1:k),'k');
+% hold off;
+% title('Velocity Plot');
+% legend('vxref','vyref','vzref','vx','vy','vz');
+% 
+% subplot(3,1,3);
+% haha = s(2:end);
+% plot(haha,U(1,1:k-1),'r',haha,U(2,1:k-1),'g',haha,U(3,1:k-1),'b');
+% title('Input Plot');
+% legend('Fx','Fy','Fz');
 
 figure;
 subplot(3,1,1);
-plot(s,ppval(xpp,s),'--r',s,ppval(ypp,s),'--g',s,ppval(zpp,s),'--b');
+plot(s,ref_state(1,:),'--r',s,ref_state(2,:),'--g',s,ref_state(3,:),'--b');
 hold on;
 plot(s,X(1,1:k),'r',s,X(2,1:k),'g',s,X(3,1:k),'b');
 hold off;
@@ -554,7 +675,7 @@ title('Position Plot');
 legend('xref','yref','zref','x','y','z');
 
 subplot(3,1,2);
-plot(s,ppval(xppdot,s),'--m',s,ppval(yppdot,s),'--c',s,ppval(zppdot,s),'--k');
+plot(s,ref_vel(1,:),'--m',s,ref_vel(2,:),'--c',s,ref_vel(3,:),'--k');
 hold on;
 plot(s,X(5,1:k),'m',s,X(6,1:k),'c',s,X(7,1:k),'k');
 hold off;
@@ -566,3 +687,284 @@ haha = s(2:end);
 plot(haha,U(1,1:k-1),'r',haha,U(2,1:k-1),'g',haha,U(3,1:k-1),'b');
 title('Input Plot');
 legend('Fx','Fy','Fz');
+
+
+time = 0:T:T*(k-1);
+% global theta_to_change;
+% global new_time;
+theta_to_change = 0;
+new_time = 0;
+% f1 = figure;
+% ax = axes('Parent',f1,'position',[0.13 0.39  0.77 0.54]);
+% bgcolor = f1.Color;
+% ui1 = uicontrol('Parent',f1,'Style','slider','Position',[61,114,419,23],...
+%                 'value',theta_to_change,'min',0,'max',theta(end),'Callback',@ui1cb);
+% ui1_1 = uicontrol('Parent',f1,'Style','text','Position',[30,114,23,23],...
+%                 'String','0','BackgroundColor',bgcolor);
+% ui1_2 = uicontrol('Parent',f1,'Style','text','Position',[480,114,70,23],...
+%                 'String',num2str(theta(end)),'BackgroundColor',bgcolor);
+% ui1_3 = uicontrol('Parent',f1,'Style','text','Position',[220,85,130,23],...
+%                 'String','Theta to change','BackgroundColor',bgcolor);
+% ui1_4 = uicontrol('Parent',f1,'Style','edit','Position',[350,85,70,23],...
+%                 'String',num2str(theta_to_change),'BackgroundColor',bgcolor,'Callback',@ui1_4cb);
+% % addlistener(ui1,'ContinuousValueChange',@ui1cb);
+% % addlistener(ui1_4,'ContinuousValueChange',@ui1_4cb);
+% ui2 = uicontrol('Parent',f1,'Style','slider','Position',[61,54,419,23],...
+%                 'value',new_time,'min',0,'max',time(end),'Callback',@ui2cb);
+% ui2_1 = uicontrol('Parent',f1,'Style','text','Position',[30,54,23,23],...
+%                 'String','0','BackgroundColor',bgcolor);
+% ui2_2 = uicontrol('Parent',f1,'Style','text','Position',[480,54,70,23],...
+%                 'String',num2str(time(end)),'BackgroundColor',bgcolor);
+% ui2_3 = uicontrol('Parent',f1,'Style','text','Position',[220,25,130,23],...
+%                 'String','New time','BackgroundColor',bgcolor);
+% ui2_4 = uicontrol('Parent',f1,'Style','edit','Position',[350,25,70,23],...
+%                 'String',num2str(new_time),'BackgroundColor',bgcolor,'Callback',@ui2_4cb);
+% % addlistener(ui2,'ContinuousValueChange',@ui2cb);
+% % addlistener(ui2_4,'ContinuousValueChange',@ui2_4cb);
+
+figure;
+subplot(2,1,1);
+plot(X(13,1:k),time);
+title('Time vs Theta');
+subplot(2,1,2);
+plot(X(13,1:k),X(14,1:k));
+title('Dot Theta vs Theta');
+
+figure;
+while (1)
+    decision_prompt = 'Do you want to change the trajectory? [Y/n]: ';
+    usr_decision = input(decision_prompt,'s');
+    if (isempty(usr_decision) || usr_decision == 'Y' || usr_decision == 'y')
+        theta_prompt = 'Enter the specific theta values: ';
+        theta_to_change = input(theta_prompt);
+        time_prompt = 'Enter the new timings: ';
+        new_time = input(time_prompt);
+        time_spline = csape(theta_to_change,new_time,'periodic');
+        theta_spline = csape(new_time,theta_to_change,'periodic');
+        tv_spline = fnder(theta_spline);
+        if loop
+            time = ppval(time_spline,temp_theta);
+            temp_time = time;
+            dot_theta = ppval(tv_spline,ppval(time_spline,temp_theta));
+            if (abs(dot_theta(1) - dot_theta(end)) < 0.01)
+                % TODO: is this correct??? how to test it???
+                new_tv_breaks = [tv_spline.breaks];
+                for n = 1:max_loop-1
+                    new_tv_breaks = [new_tv_breaks, tv_spline.breaks(2:end)+tv_spline.breaks(end)*n];
+                    time = [time, temp_time(2:end)+temp_time(end)*n];
+                end
+                new_tv_coefs = repmat(tv_spline.coefs, max_loop, 1);
+                tv_spline = ppmak(new_tv_breaks, new_tv_coefs, 1);
+                dot_theta = ppval(tv_spline,time);
+            else
+                disp('The progress velocity is not periodic. Please select your timings again.');
+                continue;
+            end
+        else
+            time = ppval(time_spline,theta);
+            dot_theta = ppval(tv_spline,ppval(time_spline,theta));
+        end
+        clf(gcf);
+        subplot(2,1,1);
+        plot(theta,time);
+        title('New Time vs Theta');
+        subplot(2,1,2);
+        plot(theta,dot_theta);
+        title('New Theta Velocity vs Theta');
+    elseif (usr_decision == 'N' || usr_decision == 'n')
+        break;
+    else
+        disp('Please enter a valid answer (y/n).');
+    end
+end
+
+%% simulate 2
+
+X = zeros(nx+nalx,kmax);
+% X(1:3,1) = [1;1;1];
+U = zeros(nu+nalu,kmax);
+solvetime = zeros(1,kmax);
+iters = zeros(1,kmax);
+timeElapsed = zeros(1,kmax);
+problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
+k = 1;
+[~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+searchlength = 40;
+fitlength = 20;
+figure;
+
+while 1%(nrid(k) ~= kmax+1)
+    tic
+    problem.xinit = X(:,k);
+    
+    % locally fit quadratic splines
+    if ~loop
+        if (nrid(k) >= kmax-fitlength)
+            fitrange = nrid(k)-fitlength:kmax+1;
+        else
+            fitrange = nrid(k):nrid(k)+fitlength;
+        end
+    else
+        fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
+    end
+%     px = polyfit(theta(fitrange),x(fitrange),polyorder);
+%     py = polyfit(theta(fitrange),y(fitrange),polyorder);
+%     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
+    px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+    py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+    pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+    ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+    dpx = polyder(px);
+    dpy = polyder(py);
+    dpz = polyder(pz);
+    if (length(dpx) ~= polyorder)
+        if (find(px == 0) == 1)
+            dpx(2) = dpx(1);
+            dpx(1) = 0;
+        else
+            dpx(2) = 0;
+        end
+    end
+    if (length(dpy) ~= polyorder)
+        if (find(py == 0) == 1)
+            dpy(2) = dpy(1);
+            dpy(1) = 0;
+        else
+            dpy(2) = 0;
+        end
+    end
+    if (length(dpz) ~= polyorder)
+        if (find(pz == 0) == 1)
+            dpz(2) = dpz(1);
+            dpz(1) = 0;
+        else
+            dpz(2) = 0;
+        end
+    end
+    qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+    
+    problem.all_parameters = repmat(qs, model.N, 1);
+    
+    [solverout,exitflag,info] = FORCESNLPsolver(problem);
+
+    if( exitflag == 1 )
+        U(:,k) = solverout.x01(1:nu+nalu);
+        solvetime(k) = info.solvetime;
+        iters(k) = info.it;
+    else
+        error('Some problem in solver');
+    end
+    
+    X(:,k+1) = model.eq( [U(:,k); X(:,k)] )';
+    
+    % mpc output
+    Xout = zeros(nx+nalx,model.N);
+    Uout = zeros(nu+nalu,model.N-1);
+    names = fieldnames(solverout);
+    for j = 1:model.N
+        tempout = getfield(solverout, names{j});
+        Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
+        if (j < model.N)
+            Uout(:,j) = tempout(1:nu+nalu);
+        end
+    end
+    
+    % real-time plot
+    clf;
+%     axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
+    axis([-2 2 -2 2 -0.1 1.1]);
+    hold on;
+    plot3(Xref(1,:),Xref(2,:),Xref(3,:),'--');
+    plot3(X(1,k),X(2,k),X(3,k),'or');
+    plot3(Xout(1,:),Xout(2,:),Xout(3,:),'.m');
+    plot3(polyval(px,theta(fitrange)),polyval(py,theta(fitrange)),polyval(pz,theta(fitrange)),'LineWidth',2);
+    drawnow;
+    hold off;
+    
+    % search nearest reference point for the next time step
+%     [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,:)')); % search through the whole trajectory
+    if ~loop
+        if (nrid(k) >= kmax-searchlength)
+            [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):kmax+1)'));
+        else
+            [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):nrid(k)+searchlength)'));
+        end % search only in a smaller search range around the previous nearest reference point
+    else
+        [~, nrid(k+1)] = min(pdist2(X(1:3,k+1)', Xref(1:3,nrid(k):nrid(k)+searchlength)'));
+    end
+    nrid(k+1) = nrid(k+1) + nrid(k) - 1; % non-reversal path
+    timeElapsed(k) = toc;
+    k = k + 1;
+end
+
+s = X(13,1:k);
+ref_state = ppval(ppp,s);
+ref_vel = ppval(pppdot,s); 
+
+figure;
+subplot(3,1,1);
+plot(s,ref_state(1,:),'--r',s,ref_state(2,:),'--g',s,ref_state(3,:),'--b');
+hold on;
+plot(s,X(1,1:k),'r',s,X(2,1:k),'g',s,X(3,1:k),'b');
+hold off;
+title('Position Plot');
+legend('xref','yref','zref','x','y','z');
+
+subplot(3,1,2);
+plot(s,ref_vel(1,:),'--m',s,ref_vel(2,:),'--c',s,ref_vel(3,:),'--k');
+hold on;
+plot(s,X(5,1:k),'m',s,X(6,1:k),'c',s,X(7,1:k),'k');
+hold off;
+title('Velocity Plot');
+legend('vxref','vyref','vzref','vx','vy','vz');
+
+subplot(3,1,3);
+haha = s(2:end);
+plot(haha,U(1,1:k-1),'r',haha,U(2,1:k-1),'g',haha,U(3,1:k-1),'b');
+title('Input Plot');
+legend('Fx','Fy','Fz');
+
+time = 0:T:T*(k-1);
+figure;
+subplot(2,1,1);
+plot(X(13,1:k),time,'r');
+title('Time vs Theta');
+subplot(2,1,2);
+plot(X(13,1:k),X(14,1:k),'r');
+title('Dot Theta vs Theta');
+
+%% functions
+
+% function timingfunc = sumtanh(ps, ig, xr, ti, ntp)
+% syms f pro
+% f = ps(1) + ps(end);
+% for k = 1:(ntp)
+%     f = f + (ps(k+1)-ps(k))*tanh(ig*pro-xr(5,ti(k))*ig);
+% end
+% f = 0.5*f;
+% timingfunc = matlabFunction(f);
+% end
+
+% function ui1cb(source,event)
+% global theta_to_change 
+% theta_to_change = get(source,'value');
+% display(theta_to_change);
+% end
+
+% function ui1_4cb(source,event)
+% global theta_to_change
+% theta_to_change = str2double(get(source,'String'));
+% display(theta_to_change);
+% end
+
+% function ui2cb(source,event)
+% global new_time 
+% new_time = get(source,'value');
+% display(new_time);
+% end
+
+% function ui2_4cb(source,event)
+% global new_time
+% new_time = str2double(get(source,'String'));
+% display(new_time);
+% end
