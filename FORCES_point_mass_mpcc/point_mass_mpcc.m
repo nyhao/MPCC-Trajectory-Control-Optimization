@@ -752,8 +752,8 @@ while (1)
             time = ppval(time_spline,theta);
             dot_theta = ppval(tv_spline,ppval(time_spline,theta));
 %             % test combining maximizing progress velocity and following reference progress velocity 
-%             dot_theta = (theta_to_change(2) - theta_to_change(1))/new_time;
-%             dot_theta = repmat(dot_theta, 1, length(theta));
+            dot_theta = (theta_to_change(2) - theta_to_change(1))/new_time;
+            dot_theta = repmat(dot_theta, 1, length(theta));
             theta_to_remove_ind = [];
             for the = theta_to_change
                 [~, nearest_theta] = min(pdist2(theta',the));
