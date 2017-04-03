@@ -47,13 +47,13 @@ typedef double FORCESNLPsolverINTERFACE_FLOAT;
 /* #define PRINTNUMERICALWARNINGS */
 
 /* maximum number of iterations  */
-#define FORCESNLPsolver_SET_MAXIT			(1000)	
+#define FORCESNLPsolver_SET_MAXIT			(5000)	
 
 /* scaling factor of line search (FTB rule) */
 #define FORCESNLPsolver_SET_FLS_SCALE		(FORCESNLPsolver_FLOAT)(0.99)      
 
 /* maximum number of supported elements in the filter */
-#define FORCESNLPsolver_MAX_FILTER_SIZE	(1000) 
+#define FORCESNLPsolver_MAX_FILTER_SIZE	(5000) 
 
 /* maximum number of supported elements in the filter */
 #define FORCESNLPsolver_MAX_SOC_IT			(4) 

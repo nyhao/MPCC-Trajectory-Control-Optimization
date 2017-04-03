@@ -1,4 +1,4 @@
 The approximate properties of the solver code are:
-	- Data memory consumption : 652644 Bytes (statically allocated)
+	- Data memory consumption : 656116 Bytes (statically allocated)
 	- Code memory consumption : ~ 35000 Bytes
 	- Computation count : 2966226 FLOPS per interior-point iteration

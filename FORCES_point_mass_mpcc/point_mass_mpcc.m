@@ -125,8 +125,8 @@ contourpenalty = 10000;
 lagpenalty = 10000; 
 orientpenalty = 0;
 zpenalty = 1000; 
-progresspenalty = 1;
-fd_factor = 0.1;
+progresspenalty = 1;%1;
+fd_factor = 2;
 % Qp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Qp = [contourpenalty, 0; 0, lagpenalty];
 Qlag = lagpenalty;
@@ -149,11 +149,11 @@ xmin = -inf*ones(1,nx+nalx);    xmax = inf*ones(1,nx+nalx); % no boundaries in s
 xmin(1,14) = 0; % only allows forward progress
 
 %% reference trajectory
-kmax = 320;
+kmax = 160;
 % theta = 0:T:T*kmax;
 dot_theta = zeros(1,kmax+1);
 targetpoints = [0, 1, 1, 0, 0; 0, 0, 1, 1, 0; 0, 0, 0, 0, 0];
-% targetpoints = [0, 1, 1.7, 1, 0, -1, -1.7, -1, 0; 0, -1, 0, 1, 0, -1, 0, 1, 0; 0, 0, 0, 0, 0, 0, 0, 0, 0];
+% targetpoints = [0, 1, 1, 0, 0; 0, 0, 1, 1, 0; 0, 0.25, 0.5, 0.75, 1];
 % thetatarget = linspace(theta(1), theta(end), length(targetpoints(1,:)));
 % xpp = spline(thetatarget,targetpoints(1,:));
 % ypp = spline(thetatarget,targetpoints(2,:));
@@ -171,7 +171,7 @@ theta = linspace(thetatarget(1), thetatarget(end), kmax+1);
 ppp = cscvn(targetpoints);
 
 % periodic spline
-loop = 1;
+loop = 0;
 max_loop = 200;
 if loop
     temp_theta = theta;
@@ -215,10 +215,14 @@ Xref = [path; yaw; theta; dot_theta];
 % progresspenalty = [repmat([-progresspenalty, timingpenalty], 1, num_timed_sect), -progresspenalty];
 % dprefval = sumtanh(timed_speed, indicator_gradient, Xref, timed_index, num_timed_point);
 % Qdtval = sumtanh(progresspenalty, indicator_gradient, Xref, timed_index, num_timed_point);
-dthetapenalty = 1000;
+dthetapenalty = 100;
 Qdtval = @(dt) (dt > 0)*(dthetapenalty + progresspenalty) - progresspenalty;
+indicator_gradient = 10;
+indicator_midpoint = 0.5;
+% Qdtval = @(dt) 0.5*((dthetapenalty+progresspenalty)*tanh(indicator_gradient*(dt-indicator_midpoint))+dthetapenalty)-0.5*progresspenalty;
 
 polyorder = 2;
+gap = 10;
 
 %% FORCES multistage form
 % assume variable ordering zi = [ui; xi] for i=1...N
@@ -227,7 +231,7 @@ polyorder = 2;
 model.N     = 11;    % horizon length
 model.nvar  = nx+nalx+nu+nalu;    % number of variables
 model.neq   = nx+nalx;    % number of equality constraints
-model.npar  = 4*(polyorder+1)+3*(polyorder); % number of runtime parameters
+model.npar  = (4*(polyorder+1)+3*(polyorder)); % number of runtime parameters
 
 % objective 
 for i = 1:model.N-1
@@ -511,7 +515,7 @@ model.ub = [ umax,    xmax  ];
 % get options
 codeoptions = getOptions('FORCESNLPsolver');
 codeoptions.printlevel = 2;
-codeoptions.maxit = 1000;
+codeoptions.maxit = 5000;
 
 % generate code
 FORCES_NLP(model, codeoptions);
@@ -637,7 +641,6 @@ end
 
 %% plot
 
-% s = 0:(1/(size(X,2)-1))*0.05*kmax:0.05*kmax;
 s = X(13,1:k);
 ref_state = ppval(ppp,s);
 ref_vel = ppval(pppdot,s); 
@@ -688,39 +691,9 @@ plot(haha,U(1,1:k-1),'r',haha,U(2,1:k-1),'g',haha,U(3,1:k-1),'b');
 title('Input Plot');
 legend('Fx','Fy','Fz');
 
-
 time = 0:T:T*(k-1);
-% global theta_to_change;
-% global new_time;
 theta_to_change = 0;
 new_time = 0;
-% f1 = figure;
-% ax = axes('Parent',f1,'position',[0.13 0.39  0.77 0.54]);
-% bgcolor = f1.Color;
-% ui1 = uicontrol('Parent',f1,'Style','slider','Position',[61,114,419,23],...
-%                 'value',theta_to_change,'min',0,'max',theta(end),'Callback',@ui1cb);
-% ui1_1 = uicontrol('Parent',f1,'Style','text','Position',[30,114,23,23],...
-%                 'String','0','BackgroundColor',bgcolor);
-% ui1_2 = uicontrol('Parent',f1,'Style','text','Position',[480,114,70,23],...
-%                 'String',num2str(theta(end)),'BackgroundColor',bgcolor);
-% ui1_3 = uicontrol('Parent',f1,'Style','text','Position',[220,85,130,23],...
-%                 'String','Theta to change','BackgroundColor',bgcolor);
-% ui1_4 = uicontrol('Parent',f1,'Style','edit','Position',[350,85,70,23],...
-%                 'String',num2str(theta_to_change),'BackgroundColor',bgcolor,'Callback',@ui1_4cb);
-% % addlistener(ui1,'ContinuousValueChange',@ui1cb);
-% % addlistener(ui1_4,'ContinuousValueChange',@ui1_4cb);
-% ui2 = uicontrol('Parent',f1,'Style','slider','Position',[61,54,419,23],...
-%                 'value',new_time,'min',0,'max',time(end),'Callback',@ui2cb);
-% ui2_1 = uicontrol('Parent',f1,'Style','text','Position',[30,54,23,23],...
-%                 'String','0','BackgroundColor',bgcolor);
-% ui2_2 = uicontrol('Parent',f1,'Style','text','Position',[480,54,70,23],...
-%                 'String',num2str(time(end)),'BackgroundColor',bgcolor);
-% ui2_3 = uicontrol('Parent',f1,'Style','text','Position',[220,25,130,23],...
-%                 'String','New time','BackgroundColor',bgcolor);
-% ui2_4 = uicontrol('Parent',f1,'Style','edit','Position',[350,25,70,23],...
-%                 'String',num2str(new_time),'BackgroundColor',bgcolor,'Callback',@ui2_4cb);
-% % addlistener(ui2,'ContinuousValueChange',@ui2cb);
-% % addlistener(ui2_4,'ContinuousValueChange',@ui2_4cb);
 
 figure;
 subplot(2,1,1);
@@ -728,8 +701,10 @@ plot(X(13,1:k),time);
 title('Time vs Theta');
 subplot(2,1,2);
 plot(X(13,1:k),X(14,1:k));
-title('Dot Theta vs Theta');
+title('Theta Velocity vs Theta');
 
+optimized_time = time;
+optimized_theta = X(13,1:k);
 figure;
 while (1)
     decision_prompt = 'Do you want to change the trajectory? [Y/n]: ';
@@ -739,31 +714,54 @@ while (1)
         theta_to_change = input(theta_prompt);
         time_prompt = 'Enter the new timings: ';
         new_time = input(time_prompt);
-        time_spline = csape(theta_to_change,new_time,'periodic');
-        theta_spline = csape(new_time,theta_to_change,'periodic');
+        theta_to_change_ind = [];
+        for the = theta_to_change
+            [~, nearest_theta] = min(pdist2(optimized_theta',the));
+            theta_to_change_ind = [theta_to_change_ind, nearest_theta];
+        end
+        old_time = optimized_time(theta_to_change_ind(2)) - optimized_time(theta_to_change_ind(1));
+        optimized_time(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = 0;
+        optimized_time(theta_to_change_ind(2)) = optimized_time(theta_to_change_ind(1)) + new_time;
+        optimized_time(theta_to_change_ind(2)+1:end) = optimized_time(theta_to_change_ind(2)+1:end) + new_time - old_time;
+        optimized_time(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = [];
+        optimized_theta(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = [];
+        time_spline = csape(optimized_theta,optimized_time);
+        theta_spline = csape(optimized_time,optimized_theta);
+%         time_spline = csape(theta_to_change,new_time,'periodic');
+%         theta_spline = csape(new_time,theta_to_change,'periodic');
         tv_spline = fnder(theta_spline);
         if loop
-            time = ppval(time_spline,temp_theta);
-            temp_time = time;
-            dot_theta = ppval(tv_spline,ppval(time_spline,temp_theta));
-            if (abs(dot_theta(1) - dot_theta(end)) < 0.01)
-                % TODO: is this correct??? how to test it???
-                new_tv_breaks = [tv_spline.breaks];
-                for n = 1:max_loop-1
-                    new_tv_breaks = [new_tv_breaks, tv_spline.breaks(2:end)+tv_spline.breaks(end)*n];
-                    time = [time, temp_time(2:end)+temp_time(end)*n];
-                end
-                new_tv_coefs = repmat(tv_spline.coefs, max_loop, 1);
-                tv_spline = ppmak(new_tv_breaks, new_tv_coefs, 1);
-                dot_theta = ppval(tv_spline,time);
-            else
-                disp('The progress velocity is not periodic. Please select your timings again.');
-                continue;
-            end
+%             time = ppval(time_spline,temp_theta);
+%             temp_time = time;
+%             dot_theta = ppval(tv_spline,ppval(time_spline,temp_theta));
+%             if (abs(dot_theta(1) - dot_theta(end)) < 0.01)
+%                 % TODO: is this correct??? how to test it???
+%                 new_tv_breaks = [tv_spline.breaks];
+%                 for n = 1:max_loop-1
+%                     new_tv_breaks = [new_tv_breaks, tv_spline.breaks(2:end)+tv_spline.breaks(end)*n];
+%                     time = [time, temp_time(2:end)+temp_time(end)*n];
+%                 end
+%                 new_tv_coefs = repmat(tv_spline.coefs, max_loop, 1);
+%                 tv_spline = ppmak(new_tv_breaks, new_tv_coefs, 1);
+%                 dot_theta = ppval(tv_spline,time);
+%             else
+%                 disp('The progress velocity is not periodic. Please select your timings again.');
+%                 continue;
+%             end
         else
             time = ppval(time_spline,theta);
             dot_theta = ppval(tv_spline,ppval(time_spline,theta));
-        end
+%             % test combining maximizing progress velocity and following reference progress velocity 
+%             dot_theta = (theta_to_change(2) - theta_to_change(1))/new_time;
+%             dot_theta = repmat(dot_theta, 1, length(theta));
+            theta_to_remove_ind = [];
+            for the = theta_to_change
+                [~, nearest_theta] = min(pdist2(theta',the));
+                theta_to_remove_ind = [theta_to_remove_ind, nearest_theta];
+            end % hack
+            dot_theta(1:theta_to_remove_ind(1)-1) = 0; % hack
+            dot_theta(theta_to_remove_ind(end)+1:end) = 0; % hack
+        end 
         clf(gcf);
         subplot(2,1,1);
         plot(theta,time);
@@ -793,7 +791,8 @@ searchlength = 40;
 fitlength = 20;
 figure;
 
-while 1%(nrid(k) ~= kmax+1)
+user_ind = find(dot_theta ~= 0);
+while (nrid(k) ~= kmax+1)
     tic
     problem.xinit = X(:,k);
     
@@ -813,7 +812,7 @@ while 1%(nrid(k) ~= kmax+1)
     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
-    ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
     dpx = polyder(px);
     dpy = polyder(py);
     dpz = polyder(pz);
@@ -840,6 +839,11 @@ while 1%(nrid(k) ~= kmax+1)
         else
             dpz(2) = 0;
         end
+    end
+    if (nrid(k) >= min(user_ind) && nrid(k) <= max(user_ind))
+        ptv = polyfit(theta(user_ind),dot_theta(user_ind),polyorder);
+    else
+        ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
     end
     qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
     
@@ -931,40 +935,4 @@ plot(X(13,1:k),time,'r');
 title('Time vs Theta');
 subplot(2,1,2);
 plot(X(13,1:k),X(14,1:k),'r');
-title('Dot Theta vs Theta');
-
-%% functions
-
-% function timingfunc = sumtanh(ps, ig, xr, ti, ntp)
-% syms f pro
-% f = ps(1) + ps(end);
-% for k = 1:(ntp)
-%     f = f + (ps(k+1)-ps(k))*tanh(ig*pro-xr(5,ti(k))*ig);
-% end
-% f = 0.5*f;
-% timingfunc = matlabFunction(f);
-% end
-
-% function ui1cb(source,event)
-% global theta_to_change 
-% theta_to_change = get(source,'value');
-% display(theta_to_change);
-% end
-
-% function ui1_4cb(source,event)
-% global theta_to_change
-% theta_to_change = str2double(get(source,'String'));
-% display(theta_to_change);
-% end
-
-% function ui2cb(source,event)
-% global new_time 
-% new_time = get(source,'value');
-% display(new_time);
-% end
-
-% function ui2_4cb(source,event)
-% global new_time
-% new_time = str2double(get(source,'String'));
-% display(new_time);
-% end
+title('Theta Velocity vs Theta');

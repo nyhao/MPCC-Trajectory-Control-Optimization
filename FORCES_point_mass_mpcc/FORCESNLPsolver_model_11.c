@@ -380,7 +380,7 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
   a120=(a120+a118);
          a121=0.;
   a121=(a121<a120);
-  a120=1001.;
+  a120=101.;
   a120=(a120*a121);
   a121=1.;
   a120=(a120-a121);
@@ -392,7 +392,7 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
   a119=(a119-a116);
   a116=(a117*a119);
   a50=(a50+a116);
-  a116=1.0000000000000001e-01;
+  a116=2.;
   a118=arg[0] ? arg[0][13] : 0;
          a122=(a116*a118);
          a123=(a122*a118);
