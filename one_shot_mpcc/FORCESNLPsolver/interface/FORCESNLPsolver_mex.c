@@ -121,11 +121,11 @@ void mexFunction( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     {
     mexErrMsgTxt("PARAMS.all_parameters must be a double.");
     }
-    if( mxGetM(par) != 2898 || mxGetN(par) != 1 ) {
-    mexErrMsgTxt("PARAMS.all_parameters must be of size [2898 x 1]");
+    if( mxGetM(par) != 3220 || mxGetN(par) != 1 ) {
+    mexErrMsgTxt("PARAMS.all_parameters must be of size [3220 x 1]");
     }
 #endif	 
-    copyMArrayToC(mxGetPr(par), params.all_parameters, 2898);
+    copyMArrayToC(mxGetPr(par), params.all_parameters, 3220);
 
 	#if FORCESNLPsolver_SET_PRINTLEVEL > 0
 		/* Prepare file for printfs */

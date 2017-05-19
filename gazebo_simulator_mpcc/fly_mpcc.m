@@ -66,7 +66,7 @@ Bd(15,5) = -1/T;
 % for constant Q and P matrices
 contourpenalty = 100; 
 zpenalty = 0.000005; % z
-xypenalty = 0.0005; % xy
+xypenalty = 0.5; % xy
 lagpenalty = 100; 
 orientpenalty = 0;
 progresspenalty = 0.00000001;
@@ -242,7 +242,7 @@ model.npar  = 3*(polyorder+1)+3*(polyorder); % number of runtime parameters
 %         Qdtheta*(z(21)) + ...
 %         (z(14:17))'*Qj*(z(14:17)) + ...
 %         (z(22))'*Qjtheta*(z(22));
-model.objective = @(z,par) ... (z(10)-10)'*zpenalty*(z(10)-10) + ...
+model.objective = @(z,par) ... (z(10)-10)'*zpenalty*(z(10)-10); + ...
     (z(8)-10)'*xypenalty*(z(8)-10);% + ...
 %     (z(9)-10)'*xypenalty*(z(9)-10);
 model.eq = @kinedy;

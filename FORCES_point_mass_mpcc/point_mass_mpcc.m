@@ -125,7 +125,7 @@ contourpenalty = 10000;
 lagpenalty = 10000; 
 orientpenalty = 0;
 zpenalty = 1000; 
-progresspenalty = 1;%1;
+progresspenalty = 5;%1;
 fd_factor = 2;
 % Qp = [contourpenalty, 0, 0; 0, lagpenalty, 0; 0, 0, zpenalty];
 % Qp = [contourpenalty, 0; 0, lagpenalty];
@@ -215,7 +215,7 @@ Xref = [path; yaw; theta; dot_theta];
 % progresspenalty = [repmat([-progresspenalty, timingpenalty], 1, num_timed_sect), -progresspenalty];
 % dprefval = sumtanh(timed_speed, indicator_gradient, Xref, timed_index, num_timed_point);
 % Qdtval = sumtanh(progresspenalty, indicator_gradient, Xref, timed_index, num_timed_point);
-dthetapenalty = 100;
+dthetapenalty = 5000;
 Qdtval = @(dt) (dt > 0)*(dthetapenalty + progresspenalty) - progresspenalty;
 indicator_gradient = 10;
 indicator_midpoint = 0.5;
@@ -228,7 +228,7 @@ gap = 10;
 % assume variable ordering zi = [ui; xi] for i=1...N
 
 % dimensions
-model.N     = 11;    % horizon length
+model.N     = 21;    % horizon length
 model.nvar  = nx+nalx+nu+nalu;    % number of variables
 model.neq   = nx+nalx;    % number of equality constraints
 model.npar  = (4*(polyorder+1)+3*(polyorder)); % number of runtime parameters
@@ -535,23 +535,14 @@ searchlength = 40;
 fitlength = 20;
 figure;
 
-while (nrid(k) ~= kmax+1)
-    tic
-    problem.xinit = X(:,k);
-    
-    % locally fit quadratic splines
-    if ~loop
-        if (nrid(k) >= kmax-fitlength)
-            fitrange = nrid(k)-fitlength:kmax+1;
-        else
-            fitrange = nrid(k):nrid(k)+fitlength;
-        end
+% test pre-compute quadratic coefficients
+param = zeros(4*(polyorder+1)+3*(polyorder), kmax+1);
+for n = 1:kmax+1
+    if (n >= kmax-fitlength)
+        fitrange = n-fitlength:kmax+1;
     else
-        fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
+        fitrange = n:n+fitlength;
     end
-%     px = polyfit(theta(fitrange),x(fitrange),polyorder);
-%     py = polyfit(theta(fitrange),y(fitrange),polyorder);
-%     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
@@ -583,9 +574,70 @@ while (nrid(k) ~= kmax+1)
             dpz(2) = 0;
         end
     end
-    qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+    param(:,n) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+end
+
+while (nrid(k) ~= kmax+1)
+    tic
+    problem.xinit = X(:,k);
     
-    problem.all_parameters = repmat(qs, model.N, 1);
+%     % locally fit quadratic splines
+%     if ~loop
+%         if (nrid(k) >= kmax-fitlength)
+%             fitrange = nrid(k)-fitlength:kmax+1;
+%         else
+%             fitrange = nrid(k):nrid(k)+fitlength;
+%         end
+%     else
+%         fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
+%     end
+% %     px = polyfit(theta(fitrange),x(fitrange),polyorder);
+% %     py = polyfit(theta(fitrange),y(fitrange),polyorder);
+% %     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
+%     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+%     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+%     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+%     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%     dpx = polyder(px);
+%     dpy = polyder(py);
+%     dpz = polyder(pz);
+%     if (length(dpx) ~= polyorder)
+%         if (find(px == 0) == 1)
+%             dpx(2) = dpx(1);
+%             dpx(1) = 0;
+%         else
+%             dpx(2) = 0;
+%         end
+%     end
+%     if (length(dpy) ~= polyorder)
+%         if (find(py == 0) == 1)
+%             dpy(2) = dpy(1);
+%             dpy(1) = 0;
+%         else
+%             dpy(2) = 0;
+%         end
+%     end
+%     if (length(dpz) ~= polyorder)
+%         if (find(pz == 0) == 1)
+%             dpz(2) = dpz(1);
+%             dpz(1) = 0;
+%         else
+%             dpz(2) = 0;
+%         end
+%     end
+%     qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+%     
+%     problem.all_parameters = repmat(qs, model.N, 1);
+
+    if (nrid(k) > kmax+1-model.N)
+        problem.all_parameters = param(:,nrid(k):kmax+1);
+        while size(problem.all_parameters,2) ~= model.N
+            problem.all_parameters = [problem.all_parameters, param(:,kmax+1)];
+        end
+    else
+        problem.all_parameters = param(:,nrid(k):nrid(k)+model.N-1);
+    end
+    problem.all_parameters = reshape(problem.all_parameters,[model.N*(4*(polyorder+1)+3*(polyorder)),1]);
     
     [solverout,exitflag,info] = FORCESNLPsolver(problem);
 
@@ -791,28 +843,18 @@ searchlength = 40;
 fitlength = 20;
 figure;
 
+% test pre-compute quadratic coefficients
 user_ind = find(dot_theta ~= 0);
-while (nrid(k) ~= kmax+1)
-    tic
-    problem.xinit = X(:,k);
-    
-    % locally fit quadratic splines
-    if ~loop
-        if (nrid(k) >= kmax-fitlength)
-            fitrange = nrid(k)-fitlength:kmax+1;
-        else
-            fitrange = nrid(k):nrid(k)+fitlength;
-        end
+param = zeros(4*(polyorder+1)+3*(polyorder), kmax+1);
+for n = 1:kmax+1
+    if (n >= kmax-fitlength)
+        fitrange = n-fitlength:kmax+1;
     else
-        fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
+        fitrange = n:n+fitlength;
     end
-%     px = polyfit(theta(fitrange),x(fitrange),polyorder);
-%     py = polyfit(theta(fitrange),y(fitrange),polyorder);
-%     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
-%     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
     dpx = polyder(px);
     dpy = polyder(py);
     dpz = polyder(pz);
@@ -840,14 +882,81 @@ while (nrid(k) ~= kmax+1)
             dpz(2) = 0;
         end
     end
-    if (nrid(k) >= min(user_ind) && nrid(k) <= max(user_ind))
+    if (n >= min(user_ind) && n <= max(user_ind))
         ptv = polyfit(theta(user_ind),dot_theta(user_ind),polyorder);
     else
         ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
     end
-    qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+    param(:,n) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+end
+
+% user_ind = find(dot_theta ~= 0);
+while (nrid(k) ~= kmax+1)
+    tic
+    problem.xinit = X(:,k);
     
-    problem.all_parameters = repmat(qs, model.N, 1);
+%     % locally fit quadratic splines
+%     if ~loop
+%         if (nrid(k) >= kmax-fitlength)
+%             fitrange = nrid(k)-fitlength:kmax+1;
+%         else
+%             fitrange = nrid(k):nrid(k)+fitlength;
+%         end
+%     else
+%         fitrange = nrid(k):nrid(k)+fitlength; % inifinity loop (hack)
+%     end
+% %     px = polyfit(theta(fitrange),x(fitrange),polyorder);
+% %     py = polyfit(theta(fitrange),y(fitrange),polyorder);
+% %     pz = polyfit(theta(fitrange),z(fitrange),polyorder);
+%     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+%     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+%     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+% %     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%     dpx = polyder(px);
+%     dpy = polyder(py);
+%     dpz = polyder(pz);
+%     if (length(dpx) ~= polyorder)
+%         if (find(px == 0) == 1)
+%             dpx(2) = dpx(1);
+%             dpx(1) = 0;
+%         else
+%             dpx(2) = 0;
+%         end
+%     end
+%     if (length(dpy) ~= polyorder)
+%         if (find(py == 0) == 1)
+%             dpy(2) = dpy(1);
+%             dpy(1) = 0;
+%         else
+%             dpy(2) = 0;
+%         end
+%     end
+%     if (length(dpz) ~= polyorder)
+%         if (find(pz == 0) == 1)
+%             dpz(2) = dpz(1);
+%             dpz(1) = 0;
+%         else
+%             dpz(2) = 0;
+%         end
+%     end
+%     if (nrid(k) >= min(user_ind) && nrid(k) <= max(user_ind))
+%         ptv = polyfit(theta(user_ind),dot_theta(user_ind),polyorder);
+%     else
+%         ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
+%     end
+%     qs = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+%     
+%     problem.all_parameters = repmat(qs, model.N, 1);
+
+    if (nrid(k) > kmax+1-model.N)
+        problem.all_parameters = param(:,nrid(k):kmax+1);
+        while size(problem.all_parameters,2) ~= model.N
+            problem.all_parameters = [problem.all_parameters, param(:,kmax+1)];
+        end
+    else
+        problem.all_parameters = param(:,nrid(k):nrid(k)+model.N-1);
+    end
+    problem.all_parameters = reshape(problem.all_parameters,[model.N*(4*(polyorder+1)+3*(polyorder)),1]);
     
     [solverout,exitflag,info] = FORCESNLPsolver(problem);
 
@@ -900,7 +1009,7 @@ while (nrid(k) ~= kmax+1)
     timeElapsed(k) = toc;
     k = k + 1;
 end
-
+%%
 s = X(13,1:k);
 ref_state = ppval(ppp,s);
 ref_vel = ppval(pppdot,s); 

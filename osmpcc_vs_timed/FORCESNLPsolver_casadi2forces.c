@@ -13,8 +13,8 @@ extern "C" {
 /* prototyes for models */
 extern void FORCESNLPsolver_model_1(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_FLOAT** res);
 extern void FORCESNLPsolver_model_1_sparsity(int i, int *nrow, int *ncol, const int **colind, const int **row);
-extern void FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_FLOAT** res);
-extern void FORCESNLPsolver_model_11_sparsity(int i, int *nrow, int *ncol, const int **colind, const int **row);
+extern void FORCESNLPsolver_model_161(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_FLOAT** res);
+extern void FORCESNLPsolver_model_161_sparsity(int i, int *nrow, int *ncol, const int **colind, const int **row);
     
 
 /* copies data from sparse matrix into a dense one */
@@ -51,11 +51,11 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
     
     /* temporary storage for casadi sparse output */
     FORCESNLPsolver_FLOAT this_f;
-    FORCESNLPsolver_FLOAT nabla_f_sparse[10];
+    FORCESNLPsolver_FLOAT nabla_f_sparse[13];
     
     
-    FORCESNLPsolver_FLOAT c_sparse[15];
-    FORCESNLPsolver_FLOAT nabla_c_sparse[30];
+    FORCESNLPsolver_FLOAT c_sparse[19];
+    FORCESNLPsolver_FLOAT nabla_c_sparse[38];
             
     
     /* pointers to row and column info for 
@@ -73,7 +73,7 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
     out[0] = &this_f;
     out[1] = nabla_f_sparse;
                 
-	 if (stage >= 0 && stage < 10)
+	 if (stage >= 0 && stage < 160)
 	 {
 		 /* set inputs */
 		 out[2] = c_sparse;
@@ -88,13 +88,13 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
 		 
 	 }
 
-	 if (stage >= 10 && stage < 11)
+	 if (stage >= 160 && stage < 161)
 	 {
 		 /* call CasADi */
-		 FORCESNLPsolver_model_11(in, out);
+		 FORCESNLPsolver_model_161(in, out);
 
 		 /* copy to dense */
-		 if( nabla_f ){ FORCESNLPsolver_model_11_sparsity(3, &nrow, &ncol, &colind, &row); sparse2fullCopy(nrow, ncol, colind, row, nabla_f_sparse, nabla_f); }
+		 if( nabla_f ){ FORCESNLPsolver_model_161_sparsity(3, &nrow, &ncol, &colind, &row); sparse2fullCopy(nrow, ncol, colind, row, nabla_f_sparse, nabla_f); }
 		 
 	 }
 

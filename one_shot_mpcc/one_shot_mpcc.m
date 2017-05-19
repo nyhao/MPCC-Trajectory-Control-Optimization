@@ -5,9 +5,13 @@ close all;
 %% system
 T = 1/30; % sampling time for 30Hz
 m = 0.5; % mass
+global nx
 nx = 12; % 4d position (angle around z-axis) and up to 4th derivatives
+global nalx
 nalx = 3; % arc length and up to 4th derivatives
+global nu
 nu = 4; % force acting on the acceleration states
+global nalu
 nalu = 1; % arc acceleration (virtual input)
 g = -9.81; % gravitational acceleration
 
@@ -67,7 +71,7 @@ Bd(15,5) = -1/T;
 contourpenalty = 10000; 
 lagpenalty = 10000; 
 orientpenalty = 0;
-progresspenalty = 5;
+progresspenalty = 2;
 fd_factor = 2;
 Qlag = lagpenalty;
 Qcontour = contourpenalty;
@@ -98,13 +102,30 @@ path = ppval(ppp,theta);
 pathtan = ppval(pppdot,theta);
 yaw = atan2(pathtan(2,:),pathtan(1,:));
 Xref = [path; yaw; theta; dot_theta];
-dthetapenalty = 20000;
-Qdtval = @(dt) (dt > 0)*(dthetapenalty + progresspenalty) - progresspenalty;
-indicator_gradient = 10;
-indicator_midpoint = 0.5;
+
+% extra_theta = theta(end) + theta(2) - theta(1);
+% while extra_theta(end) < 100
+%     extra_theta = [extra_theta, extra_theta(end) + theta(2) - theta(1)];
+% end
+% theta_to_fit = [theta, extra_theta];
+% extra_path = repmat(path(:,end),1,numel(extra_theta));
+% path_to_fit = [path, extra_path];
+% extra_yaw = repmat(yaw(end),1,numel(extra_theta));
+% yaw_to_fit = [yaw, extra_yaw];
+% extra_dot_theta = repmat(dot_theta(end),1,numel(extra_theta));
+% dot_theta_to_fit = [dot_theta, extra_dot_theta];
+
+dthetapenalty = 10000;
+restpenalty = 100;
+Qdtval = @(dt,tt,end_theta) (dt > 0)*(dthetapenalty + progresspenalty) - ...
+    progresspenalty ;%+ (tt >= end_theta)*(restpenalty + progresspenalty);
+abstpenalty = 1000000;
+Qabst = @(abst) (abst > 0)*(abstpenalty);
 
 polyorder = 2;
-gap = 10;
+% gap = 10;
+
+% xmax(1,13) = max(theta); % limiting progress of theta
 
 %% FORCES multistage form
 % assume variable ordering zi = [ui; xi] for i=1...N
@@ -113,7 +134,7 @@ gap = 10;
 model.N     = kmax+1;    % horizon length
 model.nvar  = nx+nalx+nu+nalu;    % number of variables
 model.neq   = nx+nalx;    % number of equality constraints
-model.npar  = (4*(polyorder+1)+3*(polyorder)); % number of runtime parameters
+model.npar  = (4*(polyorder+1)+3*(polyorder))+2; % number of runtime parameters
 
 % objective 
 for i = 1:model.N-1
@@ -148,13 +169,14 @@ for i = 1:model.N-1
         polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
         (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Qorient* ...
         (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) + ...
-        (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
+        (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)),z(nu+nalu+nx+1),par(20))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
         (z(nu+nalu+9:nu+nalu+nx))'*Qj*(z(nu+nalu+9:nu+nalu+nx)) + ...
-        (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Qjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
+        (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Qjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx)) + ...
+        (z(nu+nalu+nx+1) - par(19))'*Qabst(par(19))*(z(nu+nalu+nx+1) - par(19));
 end
 model.objective{model.N} = @(z,par) ...
     [z(nu+nalu+1) - polyval(par(1:3),z(nu+nalu+nx+1)); ...
-    z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ...
+    z(nu+nalu+2) - polyval(par(4:6),z(nu+nalu+nx+1)); ... 
     z(nu+nalu+3) - polyval(par(7:9),z(nu+nalu+nx+1))]'* ...
     [polyval(par(10:11),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
     polyval(par(12:13),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2); ...
@@ -183,9 +205,10 @@ model.objective{model.N} = @(z,par) ...
     polyval(par(14:15),z(nu+nalu+nx+1))/sqrt(polyval(par(10:11),z(nu+nalu+nx+1))^2+polyval(par(12:13),z(nu+nalu+nx+1))^2+polyval(par(14:15),z(nu+nalu+nx+1))^2)])^2) + ...
     (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1))))'*Porient* ...
     (z(nu+nalu+4) - atan2(polyval(par(12:13),z(nu+nalu+nx+1)),polyval(par(10:11),z(nu+nalu+nx+1)))) + ...
-    (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
+    (z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1)))'*Qdtval(polyval(par(16:18),z(nu+nalu+nx+1)),z(nu+nalu+nx+1),par(20))*(z(nu+nalu+nx+2) - polyval(par(16:18),z(nu+nalu+nx+1))) + ...
     (z(nu+nalu+9:nu+nalu+nx))'*Pj*(z(nu+nalu+9:nu+nalu+nx)) + ...
-    (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Pjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx));
+    (z(nu+nalu+nx+3:nu+nalu+nx+nalx))'*Pjtheta*(z(nu+nalu+nx+3:nu+nalu+nx+nalx)) + ...
+    (z(nu+nalu+nx+1) - par(19))'*Qabst(par(19))*(z(nu+nalu+nx+1) - par(19));
 
 % equalities
 model.eq = @(z) Ad*z(nu+nalu+1:nu+nalu+nx+nalx) + Bd*z(1:nu+nalu) + gd;
@@ -194,6 +217,7 @@ model.E = [[zeros(nx-4,nu+nalu); (-1/(T*m))*[eye(4), zeros(4,1)]; (-1/T)*[zeros(
 
 % initial state
 model.xinitidx = nu+nalu+1:nu+nalu+nx+nalx;
+% model.xfinalidx = 1:nu+nalu;
 
 % inequalities
 model.lb = [ umin,    xmin  ];
@@ -211,86 +235,172 @@ FORCES_NLP(model, codeoptions);
 
 %% simulate 1
 
-X = zeros(nx+nalx,kmax);
-% X(1:3,1) = [1;1;1];
-U = zeros(nu+nalu,kmax);
-solvetime = zeros(1,kmax);
-iters = zeros(1,kmax);
-timeElapsed = zeros(1,kmax);
-problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
-k = 1;
-[~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
-searchlength = 40;
-fitlength = 40;
+progress_id = ones(1,kmax+1);
+old_progress_id = 2*ones(1,kmax+1);
+old_param = zeros(model.npar, kmax+1);
+param = zeros(model.npar, kmax+1);
+epsilon = 1;
+solution = 5000;
+exitflag = 0;
+test = 1;
+
+while (exitflag ~= 1 || solution > epsilon)
+    old_param = param;
+    old_progress_id = progress_id;
+    X = zeros(nx+nalx,kmax);
+    U = zeros(nu+nalu,kmax);
+    solvetime = zeros(1,kmax);
+    iters = zeros(1,kmax);
+    timeElapsed = zeros(1,kmax);
+    problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
+    k = 1;
+    [~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+    searchlength = 40;
+    fitlength = 40;
+
+    problem.xinit = X(:,k);
+%     problem.xfinal = zeros(nu+nalu,1);
+
+
+%     param = zeros(model.npar, (kmax/gap)+1);
+%     for k = 1:10:kmax+1
+%         if (k >= kmax-fitlength)
+%             fitrange = k-fitlength:kmax+1;
+%         else
+%             fitrange = k:k+fitlength;
+%         end
+%         px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+%         py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+%         pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+%         ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%         dpx = polyder(px);
+%         dpy = polyder(py);
+%         dpz = polyder(pz);
+%         if (length(dpx) ~= polyorder)
+%             if (find(px == 0) == 1)
+%                 dpx(2) = dpx(1);
+%                 dpx(1) = 0;
+%             else
+%                 dpx(2) = 0;
+%             end
+%         end
+%         if (length(dpy) ~= polyorder)
+%             if (find(py == 0) == 1)
+%                 dpy(2) = dpy(1);
+%                 dpy(1) = 0;
+%             else
+%                 dpy(2) = 0;
+%             end
+%         end
+%         if (length(dpz) ~= polyorder)
+%             if (find(pz == 0) == 1)
+%                 dpz(2) = dpz(1);
+%                 dpz(1) = 0;
+%             else
+%                 dpz(2) = 0;
+%             end
+%         end
+%         param(:,((k-1)/gap)+1) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+%     end
+% 
+%     problem.all_parameters = repmat(param(:,1:end-1), gap, 1);
+%     problem.all_parameters = [reshape(problem.all_parameters, [(model.npar)*(kmax),1]); ...
+%         param(:,end)];
+
+    param = zeros(model.npar, kmax+1);
+    count = 1;
+    for k = progress_id
+        if (k >= kmax-fitlength)
+            fitrange = k-fitlength:kmax+1;
+        else
+            fitrange = k:k+fitlength;
+        end
+        px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+        py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+        pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+        ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%         fitrange = k:k+fitlength;
+%         px = polyfit(theta_to_fit(fitrange),path_to_fit(1,fitrange),polyorder);
+%         py = polyfit(theta_to_fit(fitrange),path_to_fit(2,fitrange),polyorder);
+%         pz = polyfit(theta_to_fit(fitrange),path_to_fit(3,fitrange),polyorder);
+%         ptv = polyfit(theta_to_fit(fitrange),dot_theta_to_fit(fitrange),polyorder);
+        dpx = polyder(px);
+        dpy = polyder(py);
+        dpz = polyder(pz);
+        if (length(dpx) ~= polyorder)
+            if (find(px == 0) == 1)
+                dpx(2) = dpx(1);
+                dpx(1) = 0;
+            else
+                dpx(2) = 0;
+            end
+        end
+        if (length(dpy) ~= polyorder)
+            if (find(py == 0) == 1)
+                dpy(2) = dpy(1);
+                dpy(1) = 0;
+            else
+                dpy(2) = 0;
+            end
+        end
+        if (length(dpz) ~= polyorder)
+            if (find(pz == 0) == 1)
+                dpz(2) = dpz(1);
+                dpz(1) = 0;
+            else
+                dpz(2) = 0;
+            end
+        end
+        timing_theta = 0;
+        param(:,count) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'; timing_theta; max(theta)];
+%         if k > kmax
+%             param(:,count) = zeros(model.npar, 1);
+%         end
+        count = count + 1;
+    end
+    
+    problem.all_parameters = reshape(param, [(kmax+1)*(model.npar), 1]);
+
+    [solverout,exitflag,info] = FORCESNLPsolver(problem);
+
+    % mpc output
+    Xout = zeros(nx+nalx,model.N);
+    Uout = zeros(nu+nalu,model.N-1);
+    names = fieldnames(solverout);
+    for j = 1:model.N
+        tempout = getfield(solverout, names{j});
+        Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
+        if (j < model.N)
+            Uout(:,j) = tempout(1:nu+nalu);
+        end
+    end
+    
+    for pind = 1:kmax+1
+        [~,progress_id(pind)] = min(abs(repmat(Xout(13,pind),1,kmax+1) - theta));
+%         [~,progress_id(pind)] = min(abs(repmat(Xout(13,pind),1,numel(theta_to_fit)) - theta_to_fit));
+    end
+    
+%     if exitflag == 1 && test >= 8
+%         break
+%     end
+%     test = test + 1;
+    
+    param_diff = abs(param - old_param);
+    progress_diff = abs(progress_id - old_progress_id);
+%     solution = mean(progress_diff);
+    coor_diff = abs(Xref(1:3,:) - Xout(1:3,:));
+    solution = mean(mean(coor_diff));
+end
+
+%% plot 1
+
 figure;
-
-problem.xinit = X(:,k);
-
-param = zeros(4*(polyorder+1)+3*(polyorder), (kmax/gap)+1);
-for k = 1:10:kmax+1
-    if (k >= kmax-fitlength)
-        fitrange = k-fitlength:kmax+1;
-    else
-        fitrange = k:k+fitlength;
-    end
-    px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
-    py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
-    pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
-    ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
-    dpx = polyder(px);
-    dpy = polyder(py);
-    dpz = polyder(pz);
-    if (length(dpx) ~= polyorder)
-        if (find(px == 0) == 1)
-            dpx(2) = dpx(1);
-            dpx(1) = 0;
-        else
-            dpx(2) = 0;
-        end
-    end
-    if (length(dpy) ~= polyorder)
-        if (find(py == 0) == 1)
-            dpy(2) = dpy(1);
-            dpy(1) = 0;
-        else
-            dpy(2) = 0;
-        end
-    end
-    if (length(dpz) ~= polyorder)
-        if (find(pz == 0) == 1)
-            dpz(2) = dpz(1);
-            dpz(1) = 0;
-        else
-            dpz(2) = 0;
-        end
-    end
-    param(:,((k-1)/10)+1) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
-end
-
-problem.all_parameters = repmat(param(:,1:end-1), gap, 1);
-problem.all_parameters = [reshape(problem.all_parameters, [(4*(polyorder+1)+3*(polyorder))*(kmax),1]); ...
-    param(:,end)];
-
-[solverout,exitflag,info] = FORCESNLPsolver(problem);
-
-% mpc output
-Xout = zeros(nx+nalx,model.N);
-Uout = zeros(nu+nalu,model.N-1);
-names = fieldnames(solverout);
-for j = 1:model.N
-    tempout = getfield(solverout, names{j});
-    Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
-    if (j < model.N)
-        Uout(:,j) = tempout(1:nu+nalu);
-    end
-end
-
 plot3(Xref(1,:),Xref(2,:),Xref(3,:),'o');
-axis([-0.5 1.5 -0.5 1.2 -0.1 1]);
+axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
 hold on;
 plot3(Xout(1,:),Xout(2,:),Xout(3,:));
 
-s = Xout(13,1:k);
+s = Xout(13,:);
 ref_state = ppval(ppp,s);
 ref_vel = ppval(pppdot,s); 
 
@@ -298,7 +408,7 @@ figure;
 subplot(3,1,1);
 plot(s,ref_state(1,:),'--r',s,ref_state(2,:),'--g',s,ref_state(3,:),'--b');
 hold on;
-plot(s,Xout(1,1:k),'r',s,Xout(2,1:k),'g',s,Xout(3,1:k),'b');
+plot(s,Xout(1,:),'r',s,Xout(2,:),'g',s,Xout(3,:),'b');
 hold off;
 title('Position Plot');
 legend('xref','yref','zref','x','y','z');
@@ -306,68 +416,50 @@ legend('xref','yref','zref','x','y','z');
 subplot(3,1,2);
 plot(s,ref_vel(1,:),'--m',s,ref_vel(2,:),'--c',s,ref_vel(3,:),'--k');
 hold on;
-plot(s,Xout(5,1:k),'m',s,Xout(6,1:k),'c',s,Xout(7,1:k),'k');
+plot(s,Xout(5,:),'m',s,Xout(6,:),'c',s,Xout(7,:),'k');
 hold off;
 title('Velocity Plot');
 legend('vxref','vyref','vzref','vx','vy','vz');
 
 subplot(3,1,3);
 haha = s(2:end);
-plot(haha,Uout(1,1:k-1),'r',haha,Uout(2,1:k-1),'g',haha,Uout(3,1:k-1),'b');
+plot(haha,Uout(1,1:kmax),'r',haha,Uout(2,1:kmax),'g',haha,Uout(3,1:kmax),'b');
 title('Input Plot');
 legend('Fx','Fy','Fz');
 
-time = 0:T:T*(k-1);
-theta_to_change = 0;
-new_time = 0;
+time = 0:T:T*(kmax);
 
 figure;
 subplot(2,1,1);
-plot(Xout(13,1:k),time);
+plot(Xout(13,:),time);
 title('Time vs Theta');
 subplot(2,1,2);
-plot(Xout(13,1:k),Xout(14,1:k));
+plot(Xout(13,:),Xout(14,:));
 title('Theta Velocity vs Theta');
 
 %% user input
 
-optimized_time = time;
-optimized_theta = Xout(13,1:k);
 figure;
 while (1)
-    decision_prompt = 'Do you want to change the trajectory? [Y/n]: ';
-    usr_decision = input(decision_prompt,'s');
-    if (isempty(usr_decision) || usr_decision == 'Y' || usr_decision == 'y')
+    relative_decision_prompt = 'Do you want to set relative timing to the trajectory? [Y/n]: ';
+    relative_decision = input(relative_decision_prompt,'s');
+    if (isempty(relative_decision) || relative_decision == 'Y' || relative_decision == 'y')
         theta_prompt = 'Enter the specific theta values: ';
-        theta_to_change = input(theta_prompt);
+        relative_theta = input(theta_prompt);
         time_prompt = 'Enter the new timings: ';
-        new_time = input(time_prompt);
-        theta_to_change_ind = [];
-        for the = theta_to_change
-            [~, nearest_theta] = min(pdist2(optimized_theta',the));
-            theta_to_change_ind = [theta_to_change_ind, nearest_theta];
-        end
-        old_time = optimized_time(theta_to_change_ind(2)) - optimized_time(theta_to_change_ind(1));
-        optimized_time(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = 0;
-        optimized_time(theta_to_change_ind(2)) = optimized_time(theta_to_change_ind(1)) + new_time;
-        optimized_time(theta_to_change_ind(2)+1:end) = optimized_time(theta_to_change_ind(2)+1:end) + new_time - old_time;
-        optimized_time(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = [];
-        optimized_theta(theta_to_change_ind(1)+1:theta_to_change_ind(2)-1) = [];
-        time_spline = csape(optimized_theta,optimized_time);
-        theta_spline = csape(optimized_time,optimized_theta);
-        tv_spline = fnder(theta_spline);
-        time = ppval(time_spline,theta);
-        dot_theta = ppval(tv_spline,ppval(time_spline,theta));
-        % test combining maximizing progress velocity and following reference progress velocity
-        dot_theta = (theta_to_change(2) - theta_to_change(1))/new_time;
-        dot_theta = repmat(dot_theta, 1, length(theta));
-        theta_to_remove_ind = [];
-        for the = theta_to_change
+        relative_time = input(time_prompt);
+        dot_theta = zeros(1,kmax+1);
+        relative_ind = [];
+        for the = relative_theta
             [~, nearest_theta] = min(pdist2(theta',the));
-            theta_to_remove_ind = [theta_to_remove_ind, nearest_theta];
+            relative_ind = [relative_ind, nearest_theta];
         end % hack
-        dot_theta(1:theta_to_remove_ind(1)-1) = 0; % hack
-        dot_theta(theta_to_remove_ind(end)+1:end) = 0; % hack
+        sg_incr = 1;
+        for db_incr = 1:2:numel(relative_ind)
+            dot_theta(relative_ind(db_incr):relative_ind(db_incr+1)) = ...
+                (relative_theta(db_incr+1) - relative_theta(db_incr))/relative_time(sg_incr);
+            sg_incr = sg_incr + 1;
+        end
         clf(gcf);
         subplot(2,1,1);
         plot(theta,time);
@@ -375,7 +467,25 @@ while (1)
         subplot(2,1,2);
         plot(theta,dot_theta);
         title('New Theta Velocity vs Theta');
-    elseif (usr_decision == 'N' || usr_decision == 'n')
+    elseif (relative_decision == 'N' || relative_decision == 'n')
+        relative_ind = [];
+    else
+        disp('Please enter a valid answer (y/n).');
+    end
+    absolute_decision_prompt = 'Do you want to set absolute timing to the trajectory? [Y/n]: ';
+    absolute_decision = input(absolute_decision_prompt,'s');
+    if (isempty(absolute_decision) || absolute_decision == 'Y' || absolute_decision == 'y')
+        absolute_theta_prompt = 'Enter the specific theta values: ';
+        absolute_theta = input(absolute_theta_prompt);
+        absolute_time_prompt = 'Enter the new timings: ';
+        absolute_time = input(absolute_time_prompt);
+        absolute_tk = zeros(1,numel(absolute_time));
+        for ind = 1:numel(absolute_time)
+            absolute_tk(ind) = round(absolute_time(ind)/T);
+        end
+        break;
+    elseif (absolute_decision == 'N' || absolute_decision == 'n')
+        absolute_tk = [];
         break;
     else
         disp('Please enter a valid answer (y/n).');
@@ -384,93 +494,205 @@ end
 
 %% simulate 2
 
-X = zeros(nx+nalx,kmax);
-% X(1:3,1) = [1;1;1];
-U = zeros(nu+nalu,kmax);
-solvetime = zeros(1,kmax);
-iters = zeros(1,kmax);
-timeElapsed = zeros(1,kmax);
-problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
-k = 1;
-[~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
-searchlength = 40;
-fitlength = 40;
+% X = zeros(nx+nalx,kmax);
+% % X(1:3,1) = [1;1;1];
+% U = zeros(nu+nalu,kmax);
+% solvetime = zeros(1,kmax);
+% iters = zeros(1,kmax);
+% timeElapsed = zeros(1,kmax);
+% problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
+% k = 1;
+% [~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+% searchlength = 40;
+% fitlength = 40;
+% figure;
+% 
+% problem.xinit = X(:,k);
+% 
+% param = zeros(model.npar, (kmax/gap)+1);
+% user_ind = find(dot_theta ~= 0);
+% for k = 1:10:kmax+1
+%     if (k >= kmax-fitlength)
+%         fitrange = k-fitlength:kmax+1;
+%     else
+%         fitrange = k:k+fitlength;
+%     end
+%     px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+%     py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+%     pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+% %     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
+%     dpx = polyder(px);
+%     dpy = polyder(py);
+%     dpz = polyder(pz);
+%     if (length(dpx) ~= polyorder)
+%         if (find(px == 0) == 1)
+%             dpx(2) = dpx(1);
+%             dpx(1) = 0;
+%         else
+%             dpx(2) = 0;
+%         end
+%     end
+%     if (length(dpy) ~= polyorder)
+%         if (find(py == 0) == 1)
+%             dpy(2) = dpy(1);
+%             dpy(1) = 0;
+%         else
+%             dpy(2) = 0;
+%         end
+%     end
+%     if (length(dpz) ~= polyorder)
+%         if (find(pz == 0) == 1)
+%             dpz(2) = dpz(1);
+%             dpz(1) = 0;
+%         else
+%             dpz(2) = 0;
+%         end
+%     end 
+%     if (k >= min(user_ind) && k <= max(user_ind))
+%         ptv = polyfit(theta(user_ind),dot_theta(user_ind),polyorder);
+%     else
+%         ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
+%     end
+%     param(:,((k-1)/10)+1) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
+% end
+% 
+% 
+% problem.all_parameters = repmat(param(:,1:end-1), gap, 1);
+% problem.all_parameters = [reshape(problem.all_parameters, [(model.npar)*(kmax),1]); ...
+%     param(:,end)];
+% 
+% [solverout,exitflag,info] = FORCESNLPsolver(problem);
+% 
+% % mpc output
+% Xout = zeros(nx+nalx,model.N);
+% Uout = zeros(nu+nalu,model.N-1);
+% names = fieldnames(solverout);
+% for j = 1:model.N
+%     tempout = getfield(solverout, names{j});
+%     Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
+%     if (j < model.N)
+%         Uout(:,j) = tempout(1:nu+nalu);
+%     end
+% end
+
+progress_id = ones(1,kmax+1);
+old_progress_id = 2*ones(1,kmax+1);
+old_param = zeros(model.npar, kmax+1);
+param = zeros(model.npar, kmax+1);
+epsilon = 1;
+solution = 5000;
+exitflag = 0;
+
+while (exitflag ~= 1 || solution > epsilon)
+    old_param = param;
+    old_progress_id = progress_id;
+    X = zeros(nx+nalx,kmax);
+    U = zeros(nu+nalu,kmax);
+    solvetime = zeros(1,kmax);
+    iters = zeros(1,kmax);
+    timeElapsed = zeros(1,kmax);
+    problem.x0 = zeros(model.N*model.nvar,1); % stack up problems into one N stages array
+    k = 1;
+    [~, nrid(k)] = min(pdist2(X(1:3,k)', Xref(1:3,:)'));
+    searchlength = 40;
+    fitlength = 40;
+
+    problem.xinit = X(:,k);
+%     problem.xfinal = [max(theta); 0];
+
+    param = zeros(model.npar, kmax+1);
+    count = 1;
+    for k = progress_id
+        if (k >= kmax-fitlength)
+            fitrange = k-fitlength:kmax+1;
+        else
+            fitrange = k:k+fitlength;
+        end
+        px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
+        py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
+        pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
+        dpx = polyder(px);
+        dpy = polyder(py);
+        dpz = polyder(pz);
+        if (length(dpx) ~= polyorder)
+            if (find(px == 0) == 1)
+                dpx(2) = dpx(1);
+                dpx(1) = 0;
+            else
+                dpx(2) = 0;
+            end
+        end
+        if (length(dpy) ~= polyorder)
+            if (find(py == 0) == 1)
+                dpy(2) = dpy(1);
+                dpy(1) = 0;
+            else
+                dpy(2) = 0;
+            end
+        end
+        if (length(dpz) ~= polyorder)
+            if (find(pz == 0) == 1)
+                dpz(2) = dpz(1);
+                dpz(1) = 0;
+            else
+                dpz(2) = 0;
+            end
+        end
+        for ind = 1:2:numel(relative_ind)
+            if (k >= relative_ind(ind) && k <= relative_ind(ind+1))
+                ptv = polyfit(theta(relative_ind(ind):relative_ind(ind+1)),dot_theta(relative_ind(ind):relative_ind(ind+1)),polyorder);
+                break;
+            else
+                ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
+            end
+        end
+        absolute_ind = find(absolute_tk == count);
+        if isempty(absolute_ind)
+            timing_theta = 0;
+        else
+            timing_theta = absolute_theta(absolute_ind);
+        end
+        param(:,count) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'; timing_theta; max(theta)];
+        count = count + 1;
+    end
+    
+    problem.all_parameters = reshape(param, [(kmax+1)*(model.npar), 1]);
+
+    [solverout,exitflag,info] = FORCESNLPsolver(problem);
+
+    % mpc output
+    Xout = zeros(nx+nalx,model.N);
+    Uout = zeros(nu+nalu,model.N-1);
+    names = fieldnames(solverout);
+    for j = 1:model.N
+        tempout = getfield(solverout, names{j});
+        Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
+        if (j < model.N)
+            Uout(:,j) = tempout(1:nu+nalu);
+        end
+    end
+    
+    for pind = 1:kmax+1
+        [~,progress_id(pind)] = min(abs(repmat(Xout(13,pind),1,kmax+1) - theta));
+    end
+    
+    param_diff = abs(param - old_param);
+    progress_diff = abs(progress_id - old_progress_id);
+    solution = mean(progress_diff);
+%     coor_diff = abs(Xref(1:3,:) - Xout(1:3,:));
+%     solution = mean(mean(coor_diff));
+    
+end
+
+%% plot 2
+
 figure;
-
-problem.xinit = X(:,k);
-
-param = zeros(4*(polyorder+1)+3*(polyorder), (kmax/gap)+1);
-user_ind = find(dot_theta ~= 0);
-for k = 1:10:kmax+1
-    if (k >= kmax-fitlength)
-        fitrange = k-fitlength:kmax+1;
-    else
-        fitrange = k:k+fitlength;
-    end
-    px = polyfit(theta(fitrange),path(1,fitrange),polyorder);
-    py = polyfit(theta(fitrange),path(2,fitrange),polyorder);
-    pz = polyfit(theta(fitrange),path(3,fitrange),polyorder);
-%     ptv = polyfit(theta(fitrange),dot_theta(fitrange),polyorder);
-    dpx = polyder(px);
-    dpy = polyder(py);
-    dpz = polyder(pz);
-    if (length(dpx) ~= polyorder)
-        if (find(px == 0) == 1)
-            dpx(2) = dpx(1);
-            dpx(1) = 0;
-        else
-            dpx(2) = 0;
-        end
-    end
-    if (length(dpy) ~= polyorder)
-        if (find(py == 0) == 1)
-            dpy(2) = dpy(1);
-            dpy(1) = 0;
-        else
-            dpy(2) = 0;
-        end
-    end
-    if (length(dpz) ~= polyorder)
-        if (find(pz == 0) == 1)
-            dpz(2) = dpz(1);
-            dpz(1) = 0;
-        else
-            dpz(2) = 0;
-        end
-    end 
-    if (k >= min(user_ind) && k <= max(user_ind))
-        ptv = polyfit(theta(user_ind),dot_theta(user_ind),polyorder);
-    else
-        ptv = polyfit(theta(fitrange),zeros(1,length(fitrange)),polyorder);
-    end
-    param(:,((k-1)/10)+1) = [px'; py'; pz'; dpx'; dpy'; dpz'; ptv'];
-end
-
-
-problem.all_parameters = repmat(param(:,1:end-1), gap, 1);
-problem.all_parameters = [reshape(problem.all_parameters, [(4*(polyorder+1)+3*(polyorder))*(kmax),1]); ...
-    param(:,end)];
-
-[solverout,exitflag,info] = FORCESNLPsolver(problem);
-
-% mpc output
-Xout = zeros(nx+nalx,model.N);
-Uout = zeros(nu+nalu,model.N-1);
-names = fieldnames(solverout);
-for j = 1:model.N
-    tempout = getfield(solverout, names{j});
-    Xout(:,j) = tempout(nu+nalu+1:nu+nalu+nx+nalx);
-    if (j < model.N)
-        Uout(:,j) = tempout(1:nu+nalu);
-    end
-end
-
 plot3(Xref(1,:),Xref(2,:),Xref(3,:),'o');
-axis([-0.5 1.5 -0.5 1.2 -0.1 1]);
+axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
 hold on;
 plot3(Xout(1,:),Xout(2,:),Xout(3,:));
 
-s = Xout(13,1:k);
+s = Xout(13,:);
 ref_state = ppval(ppp,s);
 ref_vel = ppval(pppdot,s); 
 
@@ -478,7 +700,7 @@ figure;
 subplot(3,1,1);
 plot(s,ref_state(1,:),'--r',s,ref_state(2,:),'--g',s,ref_state(3,:),'--b');
 hold on;
-plot(s,Xout(1,1:k),'r',s,Xout(2,1:k),'g',s,Xout(3,1:k),'b');
+plot(s,Xout(1,:),'r',s,Xout(2,:),'g',s,Xout(3,:),'b');
 hold off;
 title('Position Plot');
 legend('xref','yref','zref','x','y','z');
@@ -486,28 +708,23 @@ legend('xref','yref','zref','x','y','z');
 subplot(3,1,2);
 plot(s,ref_vel(1,:),'--m',s,ref_vel(2,:),'--c',s,ref_vel(3,:),'--k');
 hold on;
-plot(s,Xout(5,1:k),'m',s,Xout(6,1:k),'c',s,Xout(7,1:k),'k');
+plot(s,Xout(5,:),'m',s,Xout(6,:),'c',s,Xout(7,:),'k');
 hold off;
 title('Velocity Plot');
 legend('vxref','vyref','vzref','vx','vy','vz');
 
 subplot(3,1,3);
 haha = s(2:end);
-plot(haha,Uout(1,1:k-1),'r',haha,Uout(2,1:k-1),'g',haha,Uout(3,1:k-1),'b');
+plot(haha,Uout(1,1:kmax),'r',haha,Uout(2,1:kmax),'g',haha,Uout(3,1:kmax),'b');
 title('Input Plot');
 legend('Fx','Fy','Fz');
 
-time = 0:T:T*(k-1);
-theta_to_change = 0;
-new_time = 0;
+time = 0:T:T*(kmax);
 
 figure;
 subplot(2,1,1);
-plot(Xout(13,1:k),time);
+plot(Xout(13,:),time);
 title('Time vs Theta');
 subplot(2,1,2);
-plot(Xout(13,1:k),Xout(14,1:k));
+plot(Xout(13,:),Xout(14,:));
 title('Theta Velocity vs Theta');
-
-%% real flight
-% ???

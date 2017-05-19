@@ -35,14 +35,12 @@ int FORCESNLPsolver_model_11(const FORCESNLPsolver_FLOAT** arg, FORCESNLPsolver_
          a0=arg[0] ? arg[0][7] : 0;
          a1=10.;
          a2=(a0-a1);
-         a3=5.0000000000000001e-04;
-  a2=(a3*a2);
+         a3=5.0000000000000000e-01;
+  a3=(a3*a2);
   a0=(a0-a1);
-  a1=(a2*a0);
-  if (res[0]!=0) res[0][0]=a1;
   a3=(a3*a0);
-  a3=(a3+a2);
-  if (res[1]!=0) res[1][0]=a3;
+  if (res[0]!=0) res[0][0]=a3;
+  if (res[1]!=0) res[1][0]=a0;
   return 0;
 }
 

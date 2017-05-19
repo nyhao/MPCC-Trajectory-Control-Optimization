@@ -96,8 +96,8 @@ typedef struct FORCESNLPsolver_params
     /* vector of size 15 */
     FORCESNLPsolver_FLOAT xinit[15];
 
-    /* vector of size 2898 */
-    FORCESNLPsolver_FLOAT all_parameters[2898];
+    /* vector of size 3220 */
+    FORCESNLPsolver_FLOAT all_parameters[3220];
 
 } FORCESNLPsolver_params;
 
