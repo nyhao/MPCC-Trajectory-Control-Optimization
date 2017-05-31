@@ -47,7 +47,8 @@ if not os.path.exists(os.path.join(os.getcwd(),"FORCESNLPsolver","lib")):
 # compile into object file
 objdir = os.path.join(os.getcwd(),"FORCESNLPsolver","obj")
 if isinstance(c,distutils.unixccompiler.UnixCCompiler):
-	objects = c.compile([sourcefile], output_dir=objdir, extra_preargs=['-O3','-fPIC','-fopenmp','-mavx'])
+	#objects = c.compile([sourcefile], output_dir=objdir, extra_preargs=['-O3','-fPIC','-fopenmp','-mavx'])
+	objects = c.compile([sourcefile], output_dir=objdir, extra_preargs=['-O3','-fPIC','-mavx'])
 	if sys.platform.startswith('linux'):
 		c.set_libraries(['rt','gomp'])
 else:

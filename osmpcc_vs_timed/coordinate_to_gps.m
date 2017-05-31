@@ -2,7 +2,7 @@ function [longitude, latitude, altitude, heading, tilt] = ...
     coordinate_to_gps(origin_lon, origin_lat, origin_alt, x, y, z, yaw, camyaw, campitch)
 
     coordinate_origin = zeros(4,1);
-    cos_origin_lat = cos(0);
+    cos_origin_lat = cos(origin_lat);
     R = 6371 * 1000;  % radius of earth in meter
     
     longitude = rad2deg((x + coordinate_origin(1)) / (R * cos_origin_lat)) + origin_lon;

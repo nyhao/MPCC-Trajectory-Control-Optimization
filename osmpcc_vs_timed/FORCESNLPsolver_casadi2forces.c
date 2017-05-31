@@ -54,8 +54,8 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
     FORCESNLPsolver_FLOAT nabla_f_sparse[13];
     
     
-    FORCESNLPsolver_FLOAT c_sparse[19];
-    FORCESNLPsolver_FLOAT nabla_c_sparse[38];
+    FORCESNLPsolver_FLOAT c_sparse[24];
+    FORCESNLPsolver_FLOAT nabla_c_sparse[43];
             
     
     /* pointers to row and column info for 
@@ -73,7 +73,7 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
     out[0] = &this_f;
     out[1] = nabla_f_sparse;
                 
-	 if (stage >= 0 && stage < 160)
+	 if ((stage >= 0 && stage < 160))
 	 {
 		 /* set inputs */
 		 out[2] = c_sparse;
@@ -88,7 +88,7 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
 		 
 	 }
 
-	 if (stage >= 160 && stage < 161)
+	 if ((stage >= 160 && stage < 161))
 	 {
 		 /* call CasADi */
 		 FORCESNLPsolver_model_161(in, out);

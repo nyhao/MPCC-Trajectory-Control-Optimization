@@ -13,8 +13,9 @@ function generate_kml_file(filename, longitude, latitude, altitude, heading, til
     
     for i = 1:numel(longitude)
         fprintf(fileID,'<gx:FlyTo>\n');
-        fprintf(fileID,'<gx:duration>0.1</gx:duration>\n');
-        fprintf(fileID,'<gx:flyToMode>smooth</gx:flyToMode>\n');
+        fprintf(fileID,'<gx:duration>%f</gx:duration>\n',1/100);
+%         fprintf(fileID,'<gx:flyToMode>smooth</gx:flyToMode>\n');
+        fprintf(fileID,'<gx:flyToMode>bounce</gx:flyToMode>\n');
         fprintf(fileID,'<Camera>\n');
         fprintf(fileID,'<longitude>%f</longitude>\n',longitude(i));
         fprintf(fileID,'<latitude>%f</latitude>\n',latitude(i));
@@ -27,7 +28,7 @@ function generate_kml_file(filename, longitude, latitude, altitude, heading, til
         fprintf(fileID,'</Camera>\n');
         fprintf(fileID,'</gx:FlyTo>\n');
         fprintf(fileID,'<gx:Wait>\n');
-        fprintf(fileID,'<gx:duration>0.1</gx:duration>\n');
+        fprintf(fileID,'<gx:duration>%f</gx:duration>\n',1/100);
         fprintf(fileID,'</gx:Wait>\n');
     end
     
