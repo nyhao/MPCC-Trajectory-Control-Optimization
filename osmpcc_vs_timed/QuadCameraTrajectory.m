@@ -393,7 +393,7 @@ classdef QuadCameraTrajectory < handle
         end
 
         function stage = find_stage(obj, time)
-            stage = find(obj.times <= time, 1, 'last');
+            stage = find(obj.times <= time + 0.001, 1, 'last');
             if isempty(stage)
                 error(['Could not find a stage matching the specified time: ', num2str(time)]);
             end

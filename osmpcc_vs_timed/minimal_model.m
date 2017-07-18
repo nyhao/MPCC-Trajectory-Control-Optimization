@@ -56,14 +56,14 @@ Ad(17, 17) = 0;
 Ad(18, 18) = 0;
 
 % Weights
-contour_weight = 100;
-lag_weight = 100;
-orientation_weight = 0.0001;
-progress_weight = 0.5;
-jerk_weight = 1;
+contour_weight = 1;
+lag_weight = 1;
+orientation_weight = 0.01;
+progress_weight = 0.1;
+jerk_weight = 0.01;
 relative_timing_weight = 0;
 absolute_timing_weight = 0;
-rest_weight = 1000;
+rest_weight =  100;
 
 poly_order = 2;
 
@@ -278,10 +278,10 @@ ref_campitch = ppval(cp_spline,s);
 figure;
 plot(s,ref_camyaw,'--r',s,ref_campitch,'--b');
 hold on;
-plot(s,Xout(15,1:length(s)),'r',s,Xout(4,1:length(s)),'m',s,Xout(16,1:length(s)),'b');
+plot(s,Xout(15,1:length(s))+Xout(4,1:length(s)),'r',s,Xout(16,1:length(s)),'b');
 hold off;
 title('Camera Plot');
-% legend('yawref','pitchref','camyaw','quadyaw','campitch');
+% legend('yawref','pitchref','camyaw','campitch');
 
 time = 0:T:T*(length(s)-1);
 
@@ -308,8 +308,8 @@ function objective = cost_function(z, par, nu)
     ntv = nu + 14;
     ncamyaw = nu + 15;
     ncampitch = nu + 16;
-    nvcamyaw = 6;
-    nvcampitch = 7;
+    nvcamyaw = nu + 17;
+    nvcampitch = nu + 18;
 
     % Short name for indices in par
     npx = 1:3;
@@ -353,17 +353,17 @@ function objective = cost_function(z, par, nu)
     progress_control = z(ntv) - polyval(par(nptv),z_theta);
 %     jerk_minimization = [z(njerk); z(ntj)];
     jerk_minimization = z(njerk);
-    absolute_timing_control = z_theta - par(npabs);
-    rest_error = vq'*vq - 0;
+    absolute_timing_control = z(ntheta) - par(npabs);
+    rest_error = vq'*vq;
 
     % Weight functions
     contour_weight = par(npcontour);
     lag_weight = par(nplag);
     orientation_weight = par(nporientation);
-%     jerk_weight_matrix = [jerk_weight, 0, 0, 0; ...
-%                             0, jerk_weight, 0, 0; ...
-%                             0, 0, jerk_weight, 0; ...
-%                             0, 0, 0, jerk_weight/100];
+%     jerk_weight_matrix = [par(npjerk), 0, 0, 0; ...
+%                             0, par(npjerk), 0, 0; ...
+%                             0, 0, par(npjerk), 0; ...
+%                             0, 0, 0, par(npjerk)];
     jerk_weight_matrix = par(npjerk)*eye(3);
     progress_weight_function = @(rtv) (rtv > 0)*(par(nprelative) + par(npprogress)) - ...
         par(npprogress);

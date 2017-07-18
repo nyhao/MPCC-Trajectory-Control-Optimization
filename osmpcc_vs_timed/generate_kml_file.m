@@ -27,9 +27,9 @@ function generate_kml_file(filename, longitude, latitude, altitude, heading, til
         fprintf(fileID,'<altitudeMode>absolute</altitudeMode>\n');
         fprintf(fileID,'</Camera>\n');
         fprintf(fileID,'</gx:FlyTo>\n');
-        fprintf(fileID,'<gx:Wait>\n');
-        fprintf(fileID,'<gx:duration>%f</gx:duration>\n',1/100);
-        fprintf(fileID,'</gx:Wait>\n');
+%         fprintf(fileID,'<gx:Wait>\n');
+%         fprintf(fileID,'<gx:duration>%f</gx:duration>\n',1/100);
+%         fprintf(fileID,'</gx:Wait>\n');
     end
     
     fprintf(fileID,'</gx:Playlist>\n');

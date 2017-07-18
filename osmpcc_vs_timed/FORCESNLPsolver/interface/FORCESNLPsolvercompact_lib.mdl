@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "5/30/2017 4:42:44 PM"
+  Created		  "7/10/2017 4:15:31 PM"
   Creator		  "embotech GmbH"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech GmbH"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "5/30/2017 4:42:44 PM"
+  LastModifiedDate	  "7/10/2017 4:15:31 PM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -767,7 +767,7 @@ Model {
       BlockType		      S-Function
       Name		      "FORCESNLPsolver"
       SID		      "1"
-      Ports		      [3, 1]
+      Ports		      [4, 1]
       Position		      [170, 99, 650, 180]
       ZOrder		      1
       FunctionName	      "FORCESNLPsolver_simulinkBlockcompact"
@@ -804,18 +804,20 @@ Model {
 	Help			"FORCESNLPsolver_simulinkBlockcompact provides an easy Simulink interface for simulating your customized solver.  \n"
 	"\nOUTPUTS = FORCESNLPsolver(INPUTS) solves an optimization problem where:\n\n"
 	"INPUTS:\n"
-	" - x0 - column vector of length 4991\n "
-" - xinit - column vector of length 24\n "
-" - all_parameters - column vector of length 5313\n "
+	" - x0 - column vector of length 5313\n "
+" - xinit - column vector of length 26\n "
+" - xfinal - column vector of length 6\n "
+" - all_parameters - column vector of length 6440\n "
 
 	"\nOUTPUTS:\n"
-	" - outputs - column vector of length 4991\n "
+	" - outputs - column vector of length 5313\n "
 
 	"\n For more information, see https://www.embotech.com/FORCES-Pro/How-to-use/Simulink-Interface/Simulink-Block \n "
 
 	Display			"port_label('input', 1, 'x0') \n  "
 "port_label('input', 2, 'xinit') \n  "
-"port_label('input', 3, 'all_parameters') \n  "
+"port_label('input', 3, 'xfinal') \n  "
+"port_label('input', 4, 'all_parameters') \n  "
 "port_label('output', 1, 'outputs') \n "
 "if( exist('forcesprologo.jpg','file') ), image(imread('forcesprologo.jpg'),'center','on'); elseif( exist(['interface',filesep,'forcesprologo.jpg'],'file') ), image(imread(['interface',filesep,'forcesprologo.jpg']),'center','on'); elseif( exist(['FORCESNLPsolver',filesep,'interface',filesep,'forcesprologo.jpg'],'file') ), image(imread(['FORCESNLPsolver',filesep,'interface',filesep,'forcesprologo.jpg']),'center','on'); end \n "
 

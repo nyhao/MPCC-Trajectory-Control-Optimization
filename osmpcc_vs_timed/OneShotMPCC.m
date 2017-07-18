@@ -7,10 +7,11 @@ classdef OneShotMPCC < handle
         %% Weights
         contour_weight;
         lag_weight;
-        orientation_weight;
+        camera_contour_weight;
+        camera_lag_weight;
         progress_weight;
         jerk_weight;
-        camera_weight;
+        camera_jerk_weight;
         relative_timing_weight;
         absolute_timing_weight;
         rest_weight;
@@ -22,7 +23,7 @@ classdef OneShotMPCC < handle
         xmin;
         xmax;
         %% Properties for optimization
-        nStates = 24;
+        nStates = 26;
         nInputs = 7;
         nVars;  % number of variables
         nPars;  % number of runtime parameters
@@ -41,13 +42,15 @@ classdef OneShotMPCC < handle
         % Theta state indices
         thetaStateIndex;
         thetaVelStateIndex;
-        thetaAccStateIndex;
-        thetaJerkStateIndex;
         % Camera state indices
         gimbalYawStateIndex;
         gimbalPitchStateIndex;
         gimbalYawVelStateIndex;
         gimbalPitchVelStateIndex;
+        gimbalYawAccStateIndex;
+        gimbalPitchAccStateIndex;
+        gimbalYawJerkStateIndex;
+        gimbalPitchJerkStateIndex;
         % Combined state indices
         allPosStateIndices;
         allVelStateIndices;
@@ -64,8 +67,12 @@ classdef OneShotMPCC < handle
         velocities;
         cy_spline;
         cp_spline;
+        cyv_spline;
+        cpv_spline;
         camera_yaw;
         camera_pitch;
+        camera_yaw_vel;
+        camera_pitch_vel;
         theta;
         %% Solver information
         model;
@@ -96,31 +103,32 @@ classdef OneShotMPCC < handle
             % Theta state indices
             obj.thetaStateIndex = obj.yawJerkStateIndex + 1;
             obj.thetaVelStateIndex = obj.thetaStateIndex + 1;
-            obj.thetaAccStateIndex = obj.thetaVelStateIndex + 1;
-            obj.thetaJerkStateIndex = obj.thetaAccStateIndex + 1;
             % Camera state indices
-            obj.gimbalYawStateIndex = obj.thetaJerkStateIndex + 1;
+            obj.gimbalYawStateIndex = obj.thetaVelStateIndex + 1;
             obj.gimbalPitchStateIndex = obj.gimbalYawStateIndex + 1;
             obj.gimbalYawVelStateIndex = obj.gimbalYawStateIndex + 2;
             obj.gimbalPitchVelStateIndex = obj.gimbalYawStateIndex + 3;
+            obj.gimbalYawAccStateIndex = obj.gimbalYawStateIndex + 4;
+            obj.gimbalPitchAccStateIndex = obj.gimbalYawStateIndex + 5;
+            obj.gimbalYawJerkStateIndex = obj.gimbalYawStateIndex + 6;
+            obj.gimbalPitchJerkStateIndex = obj.gimbalYawStateIndex + 7;
             
             obj.T = T;
             obj.keyframes = keyframes;
             obj.keyorientations = keyorientations;
             
             obj.nVars = obj.nStates + obj.nInputs;
-            obj.nPars = (6*(obj.poly_order+1)+3*(obj.poly_order))+2+7;  % not fixed?
+            obj.nPars = (6*(obj.poly_order+1)+5*(obj.poly_order))+2+10;  % not fixed?
             
             obj.allPosStateIndices = [obj.posStateIndices, obj.yawStateIndex];
             obj.allVelStateIndices = [obj.velStateIndices, obj.yawVelStateIndex];
             obj.allAccStateIndices = [obj.accStateIndices, obj.yawAccStateIndex];
             obj.allJerkStateIndices = [obj.jerkStateIndices, obj.yawJerkStateIndex];
-            obj.allThetaStateIndices = [obj.thetaStateIndex, obj.thetaVelStateIndex, ...
-                obj.thetaAccStateIndex, obj.thetaJerkStateIndex];
-            obj.allCameraStateIndices = [obj.gimbalYawStateIndex, ...
-                obj.gimbalPitchStateIndex, ...
-                obj.gimbalYawVelStateIndex, ...
-                obj.gimbalPitchVelStateIndex];
+            obj.allThetaStateIndices = [obj.thetaStateIndex, obj.thetaVelStateIndex];
+            obj.allCameraStateIndices = [obj.gimbalYawStateIndex, obj.gimbalPitchStateIndex, ...
+                obj.gimbalYawVelStateIndex, obj.gimbalPitchVelStateIndex, ...
+                obj.gimbalYawAccStateIndex, obj.gimbalPitchAccStateIndex, ...
+                obj.gimbalYawJerkStateIndex, obj.gimbalPitchJerkStateIndex];
             
             obj.relative_ind = [];
             obj.absolute_tk = [];
@@ -140,8 +148,11 @@ classdef OneShotMPCC < handle
             if ~isfield(options, 'lag_weight')
                 options.lag_weight = 10000;
             end
-            if ~isfield(options, 'orientation_weight')
-                options.orientation_weight = 10000;
+            if ~isfield(options, 'camera_contour_weight')
+                options.camera_contour_weight = 10000;
+            end
+            if ~isfield(options, 'camera_lag_weight')
+                options.camera_lag_weight = 10000;
             end
             if ~isfield(options, 'progress_weight')
                 options.progress_weight = 2;
@@ -149,20 +160,20 @@ classdef OneShotMPCC < handle
             if ~isfield(options, 'jerk_weight')
                 options.jerk_weight = 2;
             end
-            if ~isfield(options, 'camera_weight')
-                options.camera_weight = 1;
+            if ~isfield(options, 'camera_jerk_weight')
+                options.camera_jerk_weight = 1;
             end
             if ~isfield(options, 'relative_timing_weight')
                 options.relative_timing_weight = 10000;
             end
             if ~isfield(options, 'absolute_timing_weight')
-                options.absolute_timing_weight = 10000000;
+                options.absolute_timing_weight = 10000;
             end
             if ~isfield(options, 'rest_weight')
-                options.rest_weight = 100;
+                options.rest_weight = 0;
             end
             if ~isfield(options, 'mass')
-                options.mass = 0.5;
+                options.mass = 0.439;
             end
             if ~isfield(options, 'gravity')
                 options.gravity = -9.81;
@@ -191,10 +202,11 @@ classdef OneShotMPCC < handle
             %% Extract options
             obj.contour_weight = options.contour_weight;
             obj.lag_weight = options.lag_weight;
-            obj.orientation_weight = options.orientation_weight;
+            obj.camera_contour_weight = options.camera_contour_weight;
+            obj.camera_lag_weight = options.camera_lag_weight;
             obj.progress_weight = options.progress_weight;
             obj.jerk_weight = options.jerk_weight;
-            obj.camera_weight = options.camera_weight;
+            obj.camera_jerk_weight = options.camera_jerk_weight;
             obj.relative_timing_weight = options.relative_timing_weight;
             obj.absolute_timing_weight = options.absolute_timing_weight;
             obj.rest_weight = options.rest_weight;
@@ -223,15 +235,19 @@ classdef OneShotMPCC < handle
             obj.positions = ppval(obj.pos_spline,obj.theta);
             obj.velocities = ppval(obj.vel_spline,obj.theta);
             
-            % Construct spline functions for camera's yaw and pitch which
-            % are parameterized by theta
+            % Construct spline functions for camera's yaw and pitch and
+            % their velocities which are parameterized by theta
             obj.cy_spline = spline(keyframes_to_theta,obj.keyorientations(:,1)');
             obj.cp_spline = spline(keyframes_to_theta,obj.keyorientations(:,2)');
+            obj.cyv_spline = fnder(obj.cy_spline);
+            obj.cpv_spline = fnder(obj.cp_spline);
             
-            % Compute reference camera's yaw and pitch with spline
-            % functions
+            % Compute reference camera's yaw and pitch and their velocities
+            % with spline functions
             obj.camera_yaw = ppval(obj.cy_spline,obj.theta);
             obj.camera_pitch = ppval(obj.cp_spline,obj.theta);
+            obj.camera_yaw_vel = ppval(obj.cyv_spline,obj.theta);
+            obj.camera_pitch_vel = ppval(obj.cpv_spline,obj.theta);
         end
         
         function [Ad, Bd, gd] = setup_system(obj)
@@ -281,20 +297,23 @@ classdef OneShotMPCC < handle
             progress_id = ones(1,obj.nStages+1);
             solution = 5000;
             exitflag = 0;
+            iteration = 0;
             
             %% Solve until we get a valid trajectory
-            while (exitflag ~= 1 || solution > epsilon)
+            while (exitflag ~= 1 || solution > epsilon || iteration <= 2)
                 % Setup the problem
+                iteration = iteration + 1;
                 old_progress_id = progress_id;
                 Xout = zeros(obj.nStates,obj.nStages+1);
-                Xout(:,1) = [obj.positions(:,1); 0; zeros(4,1); zeros(4,1); zeros(4,1); zeros(4,1); ...
-                    obj.camera_yaw(1); obj.camera_pitch(1); zeros(2,1)];  % initial conditions
+                Xout(:,1) = [obj.positions(:,1); 0; zeros(4,1); zeros(4,1); zeros(4,1); zeros(2,1); ...
+                    obj.camera_yaw(1); obj.camera_pitch(1); zeros(6,1)];  % initial conditions
                 Uout = zeros(obj.nInputs,obj.nStages);
                 problem.x0 = zeros((obj.nStages+1)*obj.nVars,1);  % stack up problems into one N stages array
                 k = 1;
                 fitlength = 40;
                 
                 problem.xinit = Xout(:,k);
+                problem.xfinal = zeros(6,1);
                 
                 % Compute polynomial coefficients and parameters for every time-step
                 param = zeros(obj.nPars, obj.nStages+1);
@@ -337,6 +356,24 @@ classdef OneShotMPCC < handle
                     end
                     pcy = polyfit(obj.theta(fitrange),obj.camera_yaw(fitrange),obj.poly_order);
                     pcp = polyfit(obj.theta(fitrange),obj.camera_pitch(fitrange),obj.poly_order);
+                    dpcy = polyder(pcy);
+                    dpcp = polyder(pcp);
+                    if (length(dpcy) ~= obj.poly_order)
+                        if (find(pcy == 0) == 1)
+                            dpcy(2) = dpcy(1);
+                            dpcy(1) = 0;
+                        else
+                            dpcy(2) = 0;
+                        end
+                    end
+                    if (length(dpcp) ~= obj.poly_order)
+                        if (find(pcp == 0) == 1)
+                            dpcp(2) = dpcp(1);
+                            dpcp(1) = 0;
+                        else
+                            dpcp(2) = 0;
+                        end
+                    end
                     if isempty(obj.relative_ind)
                         ptv = polyfit(obj.theta(fitrange),zeros(1,length(fitrange)),obj.poly_order);
                     else
@@ -356,10 +393,11 @@ classdef OneShotMPCC < handle
                     else
                         timing_theta = absolute_theta(absolute_ind);
                     end
-                    param(:,count) = [px'; py'; pz'; dpx'; dpy'; dpz'; pcy'; pcp'; ptv'; ...
+                    param(:,count) = [px'; py'; pz'; dpx'; dpy'; dpz'; pcy'; pcp'; dpcy'; dpcp'; ptv'; ...
                         timing_theta; max(obj.theta); obj.contour_weight; obj.lag_weight; ...
-                        obj.orientation_weight; obj.progress_weight; obj.jerk_weight; ...
-                        obj.relative_timing_weight; obj.absolute_timing_weight];
+                        obj.camera_contour_weight; obj.camera_lag_weight; obj.progress_weight; ...
+                        obj.jerk_weight; obj.camera_jerk_weight; ...
+                        obj.relative_timing_weight; obj.absolute_timing_weight; obj.rest_weight];
                     count = count + 1;
                 end
                 
@@ -392,6 +430,10 @@ classdef OneShotMPCC < handle
                 % coor_diff = abs(obj.positions - Xout(1:3,:));
                 % solution = mean(mean(coor_diff));
                 disp(['solution = ', num2str(solution)]);
+                
+                if exitflag ~= 1 && exitflag ~= 0
+                    break;
+                end
             end
         end
         
@@ -463,11 +505,14 @@ classdef OneShotMPCC < handle
             
             % LHS matrix of equality constraints
             obj.model.E = [zeros(obj.nStates,obj.nInputs), ... 
-                eye(obj.nStates) + diag([zeros(4,1); (-1/(obj.T*obj.mass))*ones(8,1); zeros(8,1)], -4) + ...
-                diag([zeros(17,1); (-1/obj.T)*ones(2,1); zeros(4,1)], -1)];
+                eye(obj.nStates) + diag([zeros(4,1); (-1/obj.T)*ones(8,1); zeros(10,1)], -4) + ...
+                diag([zeros(20,1); (-1/obj.T)*ones(4,1)], -2)];
             
             % Initial states
             obj.model.xinitidx = obj.nInputs+1:obj.nInputs+obj.nStates;
+            
+            % Final states
+            obj.model.xfinalidx = [obj.allVelStateIndices, obj.gimbalYawVelStateIndex, obj.gimbalPitchVelStateIndex];
             
             % Inequality constraints
             obj.model.lb = [ obj.umin',    obj.xmin'  ];
@@ -476,7 +521,7 @@ classdef OneShotMPCC < handle
             %% Get options for solver
             codeoptions = getOptions('FORCESNLPsolver');
             codeoptions.printlevel = 0;
-            codeoptions.maxit = 8000;
+            codeoptions.maxit = 5000;
             codeoptions.server = 'https://forces-preview.embotech.com';
 
             %% Generate code
@@ -534,10 +579,10 @@ classdef OneShotMPCC < handle
             Ad(10,10) = 0;
             Ad(11,11) = 0;
             Ad(12,12) = 0;
-            Ad(9,5) = -1/(T*m);
-            Ad(10,6) = -1/(T*m);
-            Ad(11,7) = -1/(T*m);
-            Ad(12,8) = -1/(T*m);
+            Ad(9,5) = -1/T;
+            Ad(10,6) = -1/T;
+            Ad(11,7) = -1/T;
+            Ad(12,8) = -1/T;
             
             % Jerk / Change in acceleration
             % j(i+1) = a(i+1) - a(i)
@@ -545,18 +590,25 @@ classdef OneShotMPCC < handle
             Ad(14,14) = 0;
             Ad(15,15) = 0;
             Ad(16,16) = 0;
-            Ad(13,9) = -1/(T*m);
-            Ad(14,10) = -1/(T*m);
-            Ad(15,11) = -1/(T*m);
-            Ad(16,12) = -1/(T*m);
+            Ad(13,9) = -1/T;
+            Ad(14,10) = -1/T;
+            Ad(15,11) = -1/T;
+            Ad(16,12) = -1/T;
             
-            % theta''(i+1) = theta'(i+1) - theta'(i)
-            Ad(19,19) = 0;
-            Ad(19,18) = -1/T;
+            % Finite differentiation for gimbal
+            % Acceleration / Change in velocity
+            % a(i+1) = v(i+1) - v(i)
+            Ad(23,23) = 0;
+            Ad(24,24) = 0;
+            Ad(23,21) = -1/T;
+            Ad(24,22) = -1/T;
             
-            % theta'''(i+1) = theta''(i+1) - theta''(i)
-            Ad(20,20) = 0;
-            Ad(20,19) = -1/T;
+            % Jerk / Change in acceleration
+            % j(i+1) = a(i+1) - a(i)
+            Ad(25,25) = 0;
+            Ad(26,26) = 0;
+            Ad(25,23) = -1/T;
+            Ad(26,24) = -1/T;
             
             % Remove gimbal quantities which are controlled by inputs
             Ad(obj.gimbalYawVelStateIndex - nInputs, obj.gimbalYawVelStateIndex - nInputs) = 0;
@@ -571,12 +623,19 @@ classdef OneShotMPCC < handle
             ny = nin + 2;
             nz = nin + 3;
             nyaw = nin + 4;
+            nvx = nin + 5;
+            nvy = nin + 6;
+            nvz = nin + 7;
+            nvyaw = nin + 8;
             njerk = nin + 13: nin + 16;
             ntheta = nin + 17;
             ntv = nin + 18;
-            ntj = nin + 20;
-            ncamyaw = nin + 21;
-            ncampitch = nin + 22;
+            ncamyaw = nin + 19;
+            ncampitch = nin + 20;
+            nvcamyaw = nin + 21;
+            nvcampitch = nin + 22;
+            njcamyaw = nin + 25;
+            njcampitch = nin + 26;
             
             % Short name for indices in par
             npx = 1:3;
@@ -587,16 +646,21 @@ classdef OneShotMPCC < handle
             npdz = 14:15;
             npcy = 16:18;
             npcp = 19:21;
-            nptv = 22:24;
-            npabs = 25;
-            npend = 26;
-            npcontour = 27;
-            nplag = 28;
-            nporientation = 29;
-            npprogress = 30;
-            npjerk = 31;
-            nprelative = 32;
-            npabsolute = 33;
+            npdcy = 22:23;
+            npdcp = 24:25;
+            nptv = 26:28;
+            npabs = 29;
+            npend = 30;
+            npcontour = 31;
+            nplag = 32;
+            npcamcontour = 33;
+            npcamlag = 34;
+            npprogress = 35;
+            npjerk = 36;
+            npcamjerk = 37;
+            nprelative = 38;
+            npabsolute = 39;
+            nprest = 40;
             
             % Point theta that exceeds theta of end keyframe back to theta of end keyframe
             z_theta = (z(ntheta) >= par(npend))*par(npend) + (z(ntheta) < par(npend))*z(ntheta);
@@ -609,31 +673,43 @@ classdef OneShotMPCC < handle
                 polyval(par(npdz),z_theta)];
             unit_tangent = tangent / sqrt(tangent'*tangent);
             contour_vector = r - (r'*unit_tangent)*unit_tangent;
+            orientation_ref = [polyval(par(npcy),z_theta); polyval(par(npcp),z_theta)];
+            p = [z(nyaw) + z(ncamyaw); z(ncampitch)] - orientation_ref;
+            camera_tangent = [polyval(par(npdcy),z_theta); polyval(par(npdcp),z_theta)];
+            camera_unit_tangent = camera_tangent / sqrt(camera_tangent'*camera_tangent);
+            camera_contour_vector = p - (p'*camera_unit_tangent)*camera_unit_tangent;
+            vq = [z(nvx); z(nvy); z(nvz); z(nvyaw); z(nvcamyaw); z(nvcampitch)];
             
             % Errors calculation
             lag_error = r'*unit_tangent;
             contour_error = contour_vector'*contour_vector;
-            yaw_error = z(nyaw) + z(ncamyaw) - polyval(par(npcy),z_theta);
-            pitch_error = z(ncampitch) - polyval(par(npcp),z_theta);
+            camera_lag_error = p'*camera_unit_tangent;
+            camera_contour_error = camera_contour_vector'*camera_contour_vector;
+%             yaw_error = z(nyaw) + z(ncamyaw) - polyval(par(npcy),z_theta);
+%             pitch_error = z(ncampitch) - polyval(par(npcp),z_theta);
             progress_control = z(ntv) - polyval(par(nptv),z_theta);
-            jerk_minimization = [z(njerk); z(ntj)];
-            absolute_timing_control = z_theta - par(npabs);
+            jerk_minimization = [z(njerk); z(njcamyaw); z(njcampitch)];
+            absolute_timing_control = z(ntheta) - par(npabs);
+            rest_end = vq'*vq;
             
             % Weight functions
             contour_weight = par(npcontour);
             lag_weight = par(nplag);
-            orientation_weight = par(nporientation);
-            jerk_weight_matrix = par(npjerk)*eye(5);
-            progress_weight_function = @(rtv) (rtv > 0)*(par(nprelative) + par(npprogress)) - ...
+            camera_contour_weight = par(npcamcontour);
+            camera_lag_weight = par(npcamlag);
+            jerk_weight_matrix = diag([par(npjerk)*ones(4,1); par(npcamjerk)*ones(2,1)]);
+            progress_weight_function = (polyval(par(nptv),z_theta) > 0)*(par(nprelative) + par(npprogress)) - ...
                 par(npprogress);
-            absolute_timing_weight_function = @(abst) (abst > 0)*(par(npabsolute));
+            absolute_timing_weight_function = (par(npabs) > 0)*(par(npabsolute));
+            rest_weight = (z(ntheta) >= par(npend))*par(nprest);
             
             % Combine all errors into an objective or cost function
             objective = lag_error*lag_weight*lag_error + contour_error*contour_weight + ...
-                yaw_error*orientation_weight*yaw_error + pitch_error*orientation_weight*pitch_error + ...
-                progress_control*progress_weight_function(polyval(par(nptv),z_theta))*progress_control + ...
+                camera_lag_error*camera_lag_weight*camera_lag_error + camera_contour_error*camera_contour_weight + ...
+                progress_control*progress_weight_function*progress_control + ...
                 jerk_minimization'*jerk_weight_matrix*jerk_minimization + ...
-                absolute_timing_control*absolute_timing_weight_function(par(npabs))*absolute_timing_control;
+                absolute_timing_control*absolute_timing_weight_function*absolute_timing_control + ...
+                rest_end*rest_weight;
         end
     end
 end

@@ -51,11 +51,11 @@ void FORCESNLPsolver_casadi2forces(FORCESNLPsolver_FLOAT *x,        /* primal va
     
     /* temporary storage for casadi sparse output */
     FORCESNLPsolver_FLOAT this_f;
-    FORCESNLPsolver_FLOAT nabla_f_sparse[13];
+    FORCESNLPsolver_FLOAT nabla_f_sparse[20];
     
     
-    FORCESNLPsolver_FLOAT c_sparse[24];
-    FORCESNLPsolver_FLOAT nabla_c_sparse[43];
+    FORCESNLPsolver_FLOAT c_sparse[26];
+    FORCESNLPsolver_FLOAT nabla_c_sparse[45];
             
     
     /* pointers to row and column info for 
