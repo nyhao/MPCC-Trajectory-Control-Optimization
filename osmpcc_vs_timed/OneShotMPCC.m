@@ -310,7 +310,7 @@ classdef OneShotMPCC < handle
                 Uout = zeros(obj.nInputs,obj.nStages);
                 problem.x0 = zeros((obj.nStages+1)*obj.nVars,1);  % stack up problems into one N stages array
                 k = 1;
-                fitlength = 40;
+                fitlength = 10;
                 
                 problem.xinit = Xout(:,k);
                 problem.xfinal = zeros(6,1);
@@ -427,11 +427,9 @@ classdef OneShotMPCC < handle
                 % Compute solution to decide when to stop iterating
                 progress_diff = abs(progress_id - old_progress_id);
                 solution = mean(progress_diff);
-                % coor_diff = abs(obj.positions - Xout(1:3,:));
-                % solution = mean(mean(coor_diff));
                 disp(['solution = ', num2str(solution)]);
                 
-                if exitflag ~= 1 && exitflag ~= 0
+                if exitflag ~= 1
                     break;
                 end
             end
@@ -685,8 +683,6 @@ classdef OneShotMPCC < handle
             contour_error = contour_vector'*contour_vector;
             camera_lag_error = p'*camera_unit_tangent;
             camera_contour_error = camera_contour_vector'*camera_contour_vector;
-%             yaw_error = z(nyaw) + z(ncamyaw) - polyval(par(npcy),z_theta);
-%             pitch_error = z(ncampitch) - polyval(par(npcp),z_theta);
             progress_control = z(ntv) - polyval(par(nptv),z_theta);
             jerk_minimization = [z(njerk); z(njcamyaw); z(njcampitch)];
             absolute_timing_control = z(ntheta) - par(npabs);

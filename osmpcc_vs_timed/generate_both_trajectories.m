@@ -18,9 +18,9 @@ close all;
 % T = 1/10;
 
 %% Load recorded user's keyframes
-% load('./trajectories/1_record_1_2016_08_31_17_36_29.mat')
+load('./trajectories/1_record_1_2016_08_31_17_36_29.mat')
 % load('./trajectories/1_snap_1_2016_08_31_17_42_00.mat')
-load('./trajectories/1_snap_2_2016_08_31_18_03_24.mat')
+% load('./trajectories/1_snap_2_2016_08_31_18_03_24.mat')
 % load('./trajectories/2_record_1_2016_09_01_15_16_01.mat')
 % load('./trajectories/4_record_1_2016_09_02_12_53_13.mat')
 % load('./trajectories/4_snap_1_2016_09_02_13_05_53.mat')
@@ -45,13 +45,13 @@ timedTrajectoryGenerator = QuadCameraTrajectory(T, keytimes, keyframes, keyorien
 
 %% One-shot MPCC trajectory generation
 options = struct();
-options.contour_weight = 100;% 1000;
-options.lag_weight = 100;% 1000;
-options.camera_contour_weight = 100;% 1000;
-options.camera_lag_weight = 100;% 1000;
-options.progress_weight = 10;% 10;
-options.jerk_weight = 0.1;
-options.camera_jerk_weight = 0.1;
+options.contour_weight = 20;% 1000;
+options.lag_weight = 20;% 1000;
+options.camera_contour_weight = 20;% 1000;
+options.camera_lag_weight = 20;% 1000;
+options.progress_weight = 1;% 10;
+options.jerk_weight = 0.01;
+options.camera_jerk_weight = 0.01;
 options.relative_timing_weight = 100;
 options.absolute_timing_weight = 100;
 options.rest_weight = 1000;% 10000;
@@ -68,62 +68,93 @@ osmTrajectoryGenerator.nInputs);
 
 %% Plots for timed output
 figure;
-plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'o');
+plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'.k','MarkerSize',20);
 % axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
 hold on;
 plot3(X_timed(7,:),X_timed(8,:),X_timed(9,:));
 hold off;
+title('Trajectory in 3D Space','FontSize',16);
+xlabel('x-axis','FontSize',16);
+ylabel('y-axis','FontSize',16);
+zlabel('z-axis','FontSize',16);
 
 figure;
 subplot(3,1,1);
+hold on;
 plot(timedTrajectoryGenerator.times,X_timed(7,:),'r', ... 
     timedTrajectoryGenerator.times,X_timed(8,:),'g',timedTrajectoryGenerator.times,X_timed(9,:),'b');
-title('Position Plot');
-legend('x','y','z');
+plot(keytimes,keyframes(:,1)','.r','MarkerSize',20);
+plot(keytimes,keyframes(:,2)','.g','MarkerSize',20);
+plot(keytimes,keyframes(:,3)','.b','MarkerSize',20);
+hold off;
+title('Position Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Position','FontSize',16);
+legend({'x','y','z'},'FontSize',16);
 
 subplot(3,1,2);
 plot(timedTrajectoryGenerator.times,X_timed(11,:),'r', ... 
     timedTrajectoryGenerator.times,X_timed(12,:),'g',timedTrajectoryGenerator.times,X_timed(13,:),'b');
-title('Velocity Plot');
-legend('vx','vy','vz');
+title('Velocity Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Velocity','FontSize',16);
+legend({'vx','vy','vz'},'FontSize',16);
 
 subplot(3,1,3);
 plot(timedTrajectoryGenerator.times,X_timed(1,:),'r', ... 
     timedTrajectoryGenerator.times,X_timed(2,:),'g',timedTrajectoryGenerator.times,X_timed(3,:),'b');
-title('Input Plot');
-legend('Fx','Fy','Fz');
+title('Input Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Input','FontSize',16);
+legend({'Fx','Fy','Fz'},'FontSize',16);
 
 figure;
 subplot(2,1,1);
 plot(timedTrajectoryGenerator.times,X_timed(15,:),'r', ...
     timedTrajectoryGenerator.times,X_timed(16,:),'g',timedTrajectoryGenerator.times,X_timed(17,:),'b');
-title('Acceleration Plot');
-legend('ax','ay','az');
+title('Acceleration Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Acceleration','FontSize',16);
+legend({'ax','ay','az'},'FontSize',16);
 
 subplot(2,1,2);
 plot(timedTrajectoryGenerator.times,X_timed(19,:),'r', ... 
     timedTrajectoryGenerator.times,X_timed(20,:),'g',timedTrajectoryGenerator.times,X_timed(21,:),'b');
-title('Jerk Plot');
-legend('jx','jy','jz');
+title('Jerk Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Jerk','FontSize',16);
+legend({'jx','jy','jz'},'FontSize',16);
 
 figure;
 subplot(2,1,1);
+hold on;
 plot(timedTrajectoryGenerator.times,X_timed(27,:),'r',timedTrajectoryGenerator.times,X_timed(28,:),'b');
-title('Camera Plot');
-legend('camyaw','campitch');
+plot(keytimes,keyorientations(:,1)','.r','MarkerSize',20);
+plot(keytimes,keyorientations(:,2)','.b','MarkerSize',20);
+hold off;
+title('Camera Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Camera Orientation','FontSize',16);
+legend({'camyaw','campitch'},'FontSize',16);
 
 subplot(2,1,2);
 plot(timedTrajectoryGenerator.times,X_timed(29,:),'r',timedTrajectoryGenerator.times,X_timed(30,:),'b');
-title('Camera Velocity Plot');
-legend('camyawvel','campitchvel');
+title('Camera Velocity Plot','FontSize',16);
+xlabel('Time','FontSize',16);
+ylabel('Camera Velocity','FontSize',16);
+legend({'camyawvel','campitchvel'},'FontSize',16);
 
 %% Plots for raw ouput
 figure;
-plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'o');
+plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'.k','MarkerSize',20);
 % axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
 hold on;
 plot3(raw_output.trajectory(1,:),raw_output.trajectory(2,:),raw_output.trajectory(3,:));
 hold off;
+title('Trajectory in 3D Space','FontSize',16);
+xlabel('x-axis','FontSize',16);
+ylabel('y-axis','FontSize',16);
+zlabel('z-axis','FontSize',16);
 
 s = raw_output.trajectory(17,:);
 for i = 1:length(s)
@@ -143,18 +174,19 @@ plot(s,raw_output.trajectory(1,1:length(s)),'r',s,raw_output.trajectory(2,1:leng
     s,raw_output.trajectory(3,1:length(s)),'b');
 hold off;
 % ylim([-60 60]);
-title('Position Plot');
-legend('xref','yref','zref','x','y','z');
+title('Position Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Position','FontSize',16);
+legend({'xref','yref','zref','x','y','z'},'FontSize',16);
 
 subplot(3,1,2);
-plot(s,ref_vel(1,:),'--r',s,ref_vel(2,:),'--g',s,ref_vel(3,:),'--b');
-hold on;
 plot(s,raw_output.trajectory(5,1:length(s)),'r',s,raw_output.trajectory(6,1:length(s)),'g', ... 
     s,raw_output.trajectory(7,1:length(s)),'b');
-hold off;
 % ylim([-15 15]);
-title('Velocity Plot');
-legend('vxref','vyref','vzref','vx','vy','vz');
+title('Velocity Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Velocity','FontSize',16);
+legend({'vx','vy','vz'},'FontSize',16);
 
 subplot(3,1,3);
 haha = s(2:end);
@@ -162,21 +194,27 @@ plot(haha,raw_output.input(1,1:1:length(s) - 1),'r', ...
     haha,raw_output.input(2,1:length(s) - 1),'g', ... 
     haha,raw_output.input(3,1:length(s) - 1),'b');
 % ylim([-2 6]);
-title('Input Plot');
-legend('Fx','Fy','Fz');
+title('Input Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Input','FontSize',16);
+legend({'Fx','Fy','Fz'},'FontSize',16);
 
 figure;
 subplot(2,1,1);
 plot(s,raw_output.trajectory(9,1:length(s)),'r',s,raw_output.trajectory(10,1:length(s)),'g', ... 
     s,raw_output.trajectory(11,1:length(s)),'b');
-title('Acceleration Plot');
-legend('ax','ay','az');
+title('Acceleration Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Acceleration','FontSize',16);
+legend({'ax','ay','az'},'FontSize',16);
 
 subplot(2,1,2);
 plot(s,raw_output.trajectory(13,1:length(s)),'r',s,raw_output.trajectory(14,1:length(s)),'g', ... 
     s,raw_output.trajectory(15,1:length(s)),'b');
-title('Jerk Plot');
-legend('jx','jy','jz');
+title('Jerk Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Jerk','FontSize',16);
+legend({'jx','jy','jz'},'FontSize',16);
 
 ref_camyaw = ppval(osmTrajectoryGenerator.cy_spline,s);
 ref_campitch = ppval(osmTrajectoryGenerator.cp_spline,s);
@@ -188,33 +226,45 @@ hold on;
 plot(s,raw_output.trajectory(19,1:length(s))+raw_output.trajectory(4,1:length(s)),'r', ... 
     s,raw_output.trajectory(20,1:length(s)),'b');
 hold off;
-title('Camera Plot');
-% legend('yawref','pitchref','camyaw','campitch');
+title('Camera Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Camera Orientation','FontSize',16);
+legend({'yawref','pitchref','camyaw','campitch'},'FontSize',16);
 
 subplot(2,1,2);
 plot(s,raw_output.trajectory(21,1:length(s))+raw_output.trajectory(8,1:length(s)),'r', ...
     s,raw_output.trajectory(22,1:length(s)),'b');
-title('Camera Velocity Plot');
-legend('camyawvel','campitchvel');
+title('Camera Velocity Plot','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Camera Velocity','FontSize',16);
+legend({'camyawvel','campitchvel'},'FontSize',16);
 
 time = 0:T:T*(length(s) - 1);
 
 figure;
 subplot(2,1,1);
 plot(raw_output.trajectory(17,1:length(s)),time);
-title('Time vs Theta');
+title('Time vs Theta','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Time','FontSize',16);
 subplot(2,1,2);
 plot(raw_output.trajectory(17,1:length(s)),raw_output.trajectory(18,1:length(s)));
-title('Theta Velocity vs Theta');
+title('Theta Velocity vs Theta','FontSize',16);
+xlabel('Theta','FontSize',16);
+ylabel('Theta Velocity','FontSize',16);
 
 %% Plots for tuned output
 if isfield(tuned_output, 'trajectory')
     figure;
-    plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'o');
+    plot3(keyframes(:,1),keyframes(:,2),keyframes(:,3),'.k','MarkerSize',20);
     % axis([-1.5 1.5 -1.5 1.5 -0.1 1.1]);
     hold on;
     plot3(tuned_output.trajectory(1,:),tuned_output.trajectory(2,:),tuned_output.trajectory(3,:));
     hold off;
+    title('Trajectory in 3D Space','FontSize',16);
+    xlabel('x-axis','FontSize',16);
+    ylabel('y-axis','FontSize',16);
+    zlabel('z-axis','FontSize',16);
     
     s = tuned_output.trajectory(17,:);
     for i = 1:length(s)
@@ -233,38 +283,45 @@ if isfield(tuned_output, 'trajectory')
     plot(s,tuned_output.trajectory(1,1:length(s)),'r',s,tuned_output.trajectory(2,1:length(s)),'g', ... 
         s,tuned_output.trajectory(3,1:length(s)),'b');
     hold off;
-    title('Position Plot');
-    legend('xref','yref','zref','x','y','z');
+    title('Position Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Position','FontSize',16);
+    legend({'xref','yref','zref','x','y','z'},'FontSize',16);
     
     subplot(3,1,2);
-    plot(s,ref_vel(1,:),'--r',s,ref_vel(2,:),'--g',s,ref_vel(3,:),'--b');
-    hold on;
     plot(s,tuned_output.trajectory(5,1:length(s)),'r',s,tuned_output.trajectory(6,1:length(s)),'g', ... 
         s,tuned_output.trajectory(7,1:length(s)),'b');
-    hold off;
-    title('Velocity Plot');
-    legend('vxref','vyref','vzref','vx','vy','vz');
+    title('Velocity Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Velocity','FontSize',16);
+    legend({'vx','vy','vz'},'FontSize',16);
     
     subplot(3,1,3);
     haha = s(2:end);
     plot(haha,tuned_output.input(1,1:length(s) - 1),'r', ...
         haha,tuned_output.input(2,1:length(s) - 1),'g', ...
         haha,tuned_output.input(3,1:length(s) - 1),'b');
-    title('Input Plot');
-    legend('Fx','Fy','Fz');
+    title('Input Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Input','FontSize',16);
+    legend({'Fx','Fy','Fz'},'FontSize',16);
     
     figure;
     subplot(2,1,1);
     plot(s,tuned_output.trajectory(9,1:length(s)),'r',s,tuned_output.trajectory(10,1:length(s)),'g', ...
         s,tuned_output.trajectory(11,1:length(s)),'b');
-    title('Acceleration Plot');
-    legend('ax','ay','az');
+    title('Acceleration Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Acceleration','FontSize',16);
+    legend({'ax','ay','az'},'FontSize',16);
     
     subplot(2,1,2);
     plot(s,tuned_output.trajectory(13,1:length(s)),'r',s,tuned_output.trajectory(14,1:length(s)),'g', ... 
         s,tuned_output.trajectory(15,1:length(s)),'b');
-    title('Jerk Plot');
-    legend('jx','jy','jz');
+    title('Jerk Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Jerk','FontSize',16);
+    legend({'jx','jy','jz'},'FontSize',16);
     
     ref_camyaw = ppval(osmTrajectoryGenerator.cy_spline,s);
     ref_campitch = ppval(osmTrajectoryGenerator.cp_spline,s);
@@ -276,24 +333,32 @@ if isfield(tuned_output, 'trajectory')
     plot(s,tuned_output.trajectory(19,1:length(s))+tuned_output.trajectory(4,1:length(s)),'r', ... 
         s,tuned_output.trajectory(20,1:length(s)),'b');
     hold off;
-    title('Camera Plot');
-    legend('yawref','pitchref','camyaw','campitch');
+    title('Camera Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Camera Orientation','FontSize',16);
+    legend({'yawref','pitchref','camyaw','campitch'},'FontSize',16);
     
     subplot(2,1,2);
     plot(s,tuned_output.trajectory(21,1:length(s))+tuned_output.trajectory(8,1:length(s)),'r', ...
         s,tuned_output.trajectory(22,1:length(s)),'b');
-    title('Camera Velocity Plot');
-    legend('camyawvel','campitchvel');
+    title('Camera Velocity Plot','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Camera Velocity','FontSize',16);
+    legend({'camyawvel','campitchvel'},'FontSize',16);
     
     time = 0:T:T*(length(s) - 1);
     
     figure;
     subplot(2,1,1);
     plot(tuned_output.trajectory(17,1:length(s)),time);
-    title('Time vs Theta');
+    title('Time vs Theta','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Time','FontSize',16);
     subplot(2,1,2);
     plot(tuned_output.trajectory(17,1:length(s)),tuned_output.trajectory(18,1:length(s)));
-    title('Theta Velocity vs Theta');
+    title('Theta Velocity vs Theta','FontSize',16);
+    xlabel('Theta','FontSize',16);
+    ylabel('Theta Velocity','FontSize',16);
 end
 
 %% Convert mpcc coordinates to gps
@@ -318,14 +383,14 @@ timed_campitch = interp1(old_interval, X_timed(28,:), new_interval);
     converter.meter_to_gps(timed_x, timed_y, timed_z, timed_yaw, timed_camyaw, timed_campitch);
 
 % Choose to generate kml with raw or tuned output
-choose_tuned = 1;
+choose_tuned = 0;
 if choose_tuned == 0
     old_interval = 0:1/10:((size(raw_output.trajectory,2)-1)*T);
     new_interval = 0:1/100:((size(raw_output.trajectory,2)-1)*T);
     X_mpcc = raw_output.trajectory(:,1:length(old_interval));
 else
-    old_interval = 0:1/10:((size(tuned_output.trajectory,2)-1)*T);
-    new_interval = 0:1/100:((size(tuned_output.trajectory,2)-1)*T);
+%     old_interval = 0:1/10:((size(tuned_output.trajectory,2)-1)*T);
+%     new_interval = 0:1/100:((size(tuned_output.trajectory,2)-1)*T);
     X_mpcc = tuned_output.trajectory(:,1:length(old_interval));
 end
 
