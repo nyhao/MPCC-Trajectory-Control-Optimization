@@ -25,7 +25,7 @@ classdef QuadCameraTrajectory < handle
         xmin;
         %% Properties for optimization
         times;
-        nStates = 24;
+        nStates = 28;
         nInputs = 6;
         nVars;
         nStages;
@@ -48,6 +48,10 @@ classdef QuadCameraTrajectory < handle
         gimbalPitchStateIndex;
         gimbalYawVelStateIndex;
         gimbalPitchVelStateIndex;
+        gimbalYawAccStateIndex;
+        gimbalPitchAccStateIndex;
+        gimbalYawJerkStateIndex;
+        gimbalPitchJerkStateIndex;
         % Combined state indices
         allPosStateIndices;
         allVelStateIndices;
@@ -92,6 +96,10 @@ classdef QuadCameraTrajectory < handle
             obj.gimbalPitchStateIndex = obj.gimbalYawStateIndex + 1;
             obj.gimbalYawVelStateIndex = obj.gimbalYawStateIndex + 2;
             obj.gimbalPitchVelStateIndex = obj.gimbalYawStateIndex + 3;
+            obj.gimbalYawAccStateIndex = obj.gimbalYawStateIndex + 4;
+            obj.gimbalPitchAccStateIndex = obj.gimbalYawStateIndex + 5;
+            obj.gimbalYawJerkStateIndex = obj.gimbalYawStateIndex + 6;
+            obj.gimbalPitchJerkStateIndex = obj.gimbalYawStateIndex + 7;
 
             obj.T = T;
             obj.keytimes = keytimes;
@@ -110,7 +118,11 @@ classdef QuadCameraTrajectory < handle
             obj.allCameraStateIndices = [obj.gimbalYawStateIndex, ...
                 obj.gimbalPitchStateIndex, ...
                 obj.gimbalYawVelStateIndex, ...
-                obj.gimbalPitchVelStateIndex];
+                obj.gimbalPitchVelStateIndex, ...
+                obj.gimbalYawAccStateIndex, ...
+                obj.gimbalPitchAccStateIndex, ...
+                obj.gimbalYawJerkStateIndex, ...
+                obj.gimbalPitchJerkStateIndex];
 
             parse_options(obj, options);
         end
@@ -204,9 +216,9 @@ classdef QuadCameraTrajectory < handle
             % on snap
             H(obj.allSnapStateIndices, obj.allSnapStateIndices) = obj.derivative_weights(4) * eye(4);
             % on camera yaw velocity
-            H(obj.gimbalYawVelStateIndex, obj.gimbalYawVelStateIndex) = obj.derivative_weights(5);
+            H(obj.gimbalYawJerkStateIndex, obj.gimbalYawJerkStateIndex) = obj.derivative_weights(5);
             % on camera pitch velocity
-            H(obj.gimbalPitchVelStateIndex, obj.gimbalPitchVelStateIndex) = obj.derivative_weights(6);
+            H(obj.gimbalPitchJerkStateIndex, obj.gimbalPitchJerkStateIndex) = obj.derivative_weights(6);
 
             %% Create system matrices
             %for normal trajectories + 8 constraints for hard start and end point (yaw
@@ -593,6 +605,24 @@ classdef QuadCameraTrajectory < handle
             I_minus(19,15) = 1/T;
             I_minus(18,14) = 1/T;
             I_minus(17,13) = 1/T;
+            
+            %for gimbal acceleration
+            Ad(25,25) = 0;
+            Ad(26,26) = 0;
+            Ad(25,23) = -1/T;
+            Ad(26,24) = -1/T;
+            
+            I_minus(25,23) = 1/T;
+            I_minus(26,24) = 1/T;
+
+            %for gimbal jerk
+            Ad(27,27) = 0;
+            Ad(28,28) = 0;
+            Ad(27,25) = -1/T;
+            Ad(28,26) = -1/T;
+            
+            I_minus(27,25) = 1/T;
+            I_minus(28,26) = 1/T;
 
             ui_xi = [Bd, Ad, zeros(nx,nu), I_minus];
         end
